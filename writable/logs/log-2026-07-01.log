@@ -1,0 +1,12 @@
+CRITICAL - 2026-07-01 09:34:23 --> TypeError: CodeIgniter\Database\BaseBuilder::distinct(): Argument #1 ($val) must be of type bool, string given, called in C:\xampp\htdocs\vark\system\Model.php on line 761
+[Method: GET, Route: guru/dashboard]
+in SYSTEMPATH\Database\BaseBuilder.php on line 569.
+ 1 SYSTEMPATH\Model.php(761): CodeIgniter\Database\BaseBuilder->distinct('pengguna_id')
+ 2 APPPATH\Controllers\GuruController.php(24): CodeIgniter\Model->__call('distinct', [...])
+ 3 SYSTEMPATH\CodeIgniter.php(974): App\Controllers\GuruController->dashboard()
+ 4 SYSTEMPATH\CodeIgniter.php(520): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\GuruController))
+ 5 SYSTEMPATH\CodeIgniter.php(363): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 6 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 7 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+ 8 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+ 9 SYSTEMPATH\rewrite.php(44): require_once('C:\\xampp\\htdocs\\vark\\public\\index.php')
