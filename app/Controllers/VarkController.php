@@ -4,23 +4,19 @@ namespace App\Controllers;
 
 use App\Models\VarkResultModel;
 use App\Models\VarkSoalModel;
+use App\Models\VarkTestSessionModel;
 
 class VarkController extends BaseController
 {
-    // ======== HALAMAN INTRO VARK (Page 3) ========
     public function index()
     {
-        // Cek login
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
             return redirect()->to('/login');
         }
 
-        // Cek apakah sudah pernah mengerjakan VARK
         $model = new VarkResultModel();
         $existing = $model->where('pengguna_id', session()->get('user_id'))->first();
-
         if ($existing) {
-            // Jika sudah, arahkan ke halaman pilih modul dengan pesan
             return redirect()->to('/siswa/modul')->with('info', 'Anda sudah mengerjakan tes VARK. Hasil: ' . $existing['kategori_hasil']);
         }
 
@@ -28,116 +24,143 @@ class VarkController extends BaseController
         return view('vark/intro', $data);
     }
 
-    // ======== MULAI TES VARK (SET TIMER) ========
     public function start()
     {
-        // Cek login
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
             return redirect()->to('/login');
         }
 
-        // Cek apakah sudah pernah mengerjakan VARK
         $model = new VarkResultModel();
         $existing = $model->where('pengguna_id', session()->get('user_id'))->first();
         if ($existing) {
             return redirect()->to('/siswa/modul')->with('info', 'Anda sudah mengerjakan tes VARK. Hasil: ' . $existing['kategori_hasil']);
         }
 
-        // Set waktu mulai tes (server timestamp dalam detik)
-        session()->set('vark_start_time', time());
+        $userId = session()->get('user_id');
+        $sessionModel = new VarkTestSessionModel();
 
-        // Redirect ke halaman soal
+        // Cek apakah sudah ada sesi di database
+        $existingSession = $sessionModel->where('user_id', $userId)->first();
+
+        if ($existingSession) {
+            // Jika sudah ada, langsung redirect ke soal (tanpa membuat start_time baru)
+            return redirect()->to('/vark/soal');
+        }
+
+        // Belum ada sesi, buat baru
+        $startTime = time();
+        $sessionModel->save([
+            'user_id' => $userId,
+            'start_time' => $startTime,
+            'question_order' => null,
+        ]);
+
+        session()->remove('vark_question_order');
+
         return redirect()->to('/vark/soal');
     }
 
-    // ======== HALAMAN SOAL VARK (Page 4) ========
     public function soal()
     {
-        // Cek login
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
             return redirect()->to('/login');
         }
 
-        // Cek apakah sudah pernah mengerjakan VARK
         $model = new VarkResultModel();
         $existing = $model->where('pengguna_id', session()->get('user_id'))->first();
         if ($existing) {
             return redirect()->to('/siswa/modul')->with('info', 'Anda sudah mengerjakan tes VARK.');
         }
 
-        // Cek apakah timer sudah dimulai
-        $startTime = session()->get('vark_start_time');
-        if (!$startTime) {
-            // Jika belum ada timer, arahkan ke start
+        $userId = session()->get('user_id');
+
+        // Ambil sesi dari database
+        $sessionModel = new VarkTestSessionModel();
+        $sessionData = $sessionModel->where('user_id', $userId)->first();
+
+        if (!$sessionData) {
             return redirect()->to('/vark/start');
         }
 
-        // Hitung sisa waktu (10 menit = 600 detik)
+        $startTime = $sessionData['start_time'];
         $elapsed = time() - $startTime;
         $remaining = 600 - $elapsed;
 
         if ($remaining <= 0) {
-            // Waktu habis, arahkan ke halaman timeout
+            $sessionModel->delete($sessionData['id']);
             return redirect()->to('/vark/hasil?timeout=1');
         }
 
-        // Ambil soal dari database
+        // Ambil soal
         $soalModel = new VarkSoalModel();
-        $questions = $soalModel->orderBy('nomor', 'ASC')->findAll();
+        $allQuestions = $soalModel->orderBy('nomor', 'ASC')->findAll();
 
-        // Acak urutan soal (shuffle)
-        shuffle($questions);
+        $questionOrder = session()->get('vark_question_order');
+        if (empty($questionOrder)) {
+            $ids = array_column($allQuestions, 'id');
+            shuffle($ids);
+            session()->set('vark_question_order', $ids);
+            $questionOrder = $ids;
+        }
+
+        $orderedQuestions = [];
+        foreach ($questionOrder as $id) {
+            foreach ($allQuestions as $q) {
+                if ($q['id'] == $id) {
+                    $orderedQuestions[] = $q;
+                    break;
+                }
+            }
+        }
 
         $data = [
-            'title'     => 'Soal Tes VARK',
-            'questions' => $questions,
-            'remaining' => $remaining, // kirim sisa waktu ke view
+            'title'      => 'Soal Tes VARK',
+            'questions'  => $orderedQuestions,
+            'remaining'  => $remaining,
             'start_time' => $startTime,
         ];
+
         return view('vark/soal', $data);
     }
 
-    // ======== PROSES SUBMIT VARK ========
     public function submit()
     {
-        // Cek login
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
             return redirect()->to('/login');
         }
 
-        // Cek apakah sudah pernah mengerjakan VARK
         $model = new VarkResultModel();
         $existing = $model->where('pengguna_id', session()->get('user_id'))->first();
         if ($existing) {
             return redirect()->to('/siswa/modul')->with('info', 'Anda sudah mengerjakan tes VARK.');
         }
 
-        // Cek waktu
-        $startTime = session()->get('vark_start_time');
-        if (!$startTime) {
+        $userId = session()->get('user_id');
+        $sessionModel = new VarkTestSessionModel();
+        $sessionData = $sessionModel->where('user_id', $userId)->first();
+
+        if (!$sessionData) {
             return redirect()->to('/vark/start');
         }
 
+        $startTime = $sessionData['start_time'];
         $elapsed = time() - $startTime;
         $remaining = 600 - $elapsed;
 
         if ($remaining <= 0) {
+            $sessionModel->delete($sessionData['id']);
             return redirect()->to('/vark/hasil?timeout=1');
         }
 
         $answers = $this->request->getPost('answers');
-
-        // Validasi: harus ada 10 jawaban
         if (!$answers || count($answers) !== 10) {
             return redirect()->to('/vark/soal')->with('error', 'Silakan jawab semua pertanyaan!');
         }
 
-        // Klasifikasi menggunakan helper
         $result = classify_vark($answers);
 
-        // Simpan ke database
         $model->save([
-            'pengguna_id'    => session()->get('user_id'),
+            'pengguna_id'    => $userId,
             'skor_v'         => $result['scores']['V'],
             'skor_a'         => $result['scores']['A'],
             'skor_r'         => $result['scores']['R'],
@@ -145,38 +168,35 @@ class VarkController extends BaseController
             'selisih'        => $result['delta'],
             'kategori_hasil' => $result['label'],
             'tipe_hasil'     => $result['type'],
-            'created_at'     => date('Y-m-d H:i:s'),
             'created_at'     => date('Y-m-d H:i:s')
         ]);
 
-        // Hapus session timer setelah selesai
-        session()->remove('vark_start_time');
+        // Hapus sesi di database
+        $sessionModel->delete($sessionData['id']);
+        session()->remove('vark_question_order');
 
-        // Tampilkan halaman hasil
         $data = [
-            'title' => 'Hasil Tes VARK',
+            'title'  => 'Hasil Tes VARK',
             'result' => $result,
-            'nama' => session()->get('name')
+            'nama'   => session()->get('name')
         ];
         return view('vark/hasil', $data);
     }
 
-    // ======== HALAMAN HASIL (UNTUK TIMEOUT) ========
     public function hasil()
     {
-        // Cek login
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
             return redirect()->to('/login');
         }
 
         $timeout = $this->request->getGet('timeout');
         if ($timeout) {
-            // Hapus session timer
-            session()->remove('vark_start_time');
+            $sessionModel = new VarkTestSessionModel();
+            $sessionModel->where('user_id', session()->get('user_id'))->delete();
+            session()->remove('vark_question_order');
             return view('vark/hasil_timeout', ['title' => 'Waktu Habis - Tes VARK']);
         }
 
-        // Jika tidak ada parameter timeout, redirect ke modul
         return redirect()->to('/siswa/modul');
     }
 }

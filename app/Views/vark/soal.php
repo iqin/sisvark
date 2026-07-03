@@ -1,4 +1,5 @@
 <?= $this->extend('layouts/main') ?>
+<!-- DEBUG VIEW: remaining = <?= $remaining ?? 'TIDAK ADA' ?> -->
 <?= $this->section('content') ?>
 <div class="row justify-content-center">
     <div class="col-md-10 col-lg-8">
@@ -15,12 +16,10 @@
                     </div>
                 </div>
 
-                <!-- Pesan Error -->
                 <?php if (session()->getFlashdata('error')): ?>
                     <div class="alert alert-danger"><?= session()->getFlashdata('error') ?></div>
                 <?php endif; ?>
 
-                <!-- Form Soal -->
                 <form action="<?= base_url('vark/submit') ?>" method="post" id="varkForm">
                     <?= csrf_field() ?>
 
@@ -67,18 +66,13 @@
     </div>
 </div>
 
-<!-- ============================================================
-     TIMER COUNTDOWN (10 MENIT) - BERBASIS SERVER TIME
-     ============================================================ -->
 <script>
     (function() {
         // Sisa waktu dari server (dalam detik)
         let remaining = <?= $remaining ?? 600 ?>;
 
-        // Element timer
         const timerEl = document.getElementById('timer');
         const form = document.getElementById('varkForm');
-        const submitBtn = document.getElementById('submitBtn');
 
         function formatTime(sec) {
             const m = Math.floor(sec / 60);
@@ -91,28 +85,18 @@
                 timerEl.textContent = '00:00';
                 timerEl.classList.remove('bg-danger');
                 timerEl.classList.add('bg-dark');
-                // Submit otomatis
-                if (form) {
-                    alert('⏰ Waktu habis! Jawaban akan dikirim otomatis.');
-                    form.submit();
-                }
+                alert('⏰ Waktu habis! Jawaban akan dikirim otomatis.');
+                form.submit();
                 return;
             }
             timerEl.textContent = formatTime(remaining);
             remaining--;
         }
 
-        // Update timer setiap 1 detik
         updateTimer();
         const interval = setInterval(updateTimer, 1000);
 
-        // Hentikan interval jika form disubmit manual
         form.addEventListener('submit', function() {
-            clearInterval(interval);
-        });
-
-        // Hentikan interval jika user navigasi keluar (opsional)
-        window.addEventListener('beforeunload', function() {
             clearInterval(interval);
         });
     })();
@@ -129,10 +113,6 @@
     }
     .card.bg-light {
         background-color: #f8f9fa !important;
-    }
-    .form-check-input:checked {
-        background-color: #4e73df;
-        border-color: #4e73df;
     }
 </style>
 <?= $this->endSection() ?>
