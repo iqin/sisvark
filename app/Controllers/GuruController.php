@@ -214,4 +214,82 @@ class GuruController extends BaseController
 
         return view('guru/vark_hasil', $data);
     }
+
+    // ======== KELOLA MATERI ADAPTIF ========
+    public function materiIndex()
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $model = new \App\Models\MateriAdaptifModel();
+        $data['konten'] = $model->getWithModul();
+        $data['title'] = 'Kelola Materi Adaptif';
+        return view('guru/materi_index', $data);
+    }
+
+    public function materiEdit($id)
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $model = new \App\Models\MateriAdaptifModel();
+        $data['konten'] = $model->find($id);
+        if (!$data['konten']) {
+            return redirect()->to('/guru/materi')->with('error', 'Konten tidak ditemukan!');
+        }
+
+        $modulModel = new \App\Models\ModulModel();
+        $data['modul'] = $modulModel->findAll();
+
+        $data['title'] = 'Edit Materi Adaptif';
+        return view('guru/materi_edit', $data);
+    }
+
+    public function materiUpdate($id)
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $model = new \App\Models\MateriAdaptifModel();
+
+        // Hanya validasi field yang bisa diubah
+        $rules = [
+            'modul_id'    => 'permit_empty|integer',
+            'judul'       => 'required|max_length[255]',
+            'isi_konten'  => 'permit_empty',
+            'url_media'   => 'permit_empty|max_length[255]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->to('/guru/materi/edit/' . $id)
+                            ->withInput()
+                            ->with('errors', $this->validator->getErrors());
+        }
+
+        // Ambil data yang sudah ada dari database untuk field yang tidak diubah
+        $existing = $model->find($id);
+        if (!$existing) {
+            return redirect()->to('/guru/materi')->with('error', 'Konten tidak ditemukan!');
+        }
+
+        // Update hanya field yang diizinkan
+        $updateData = [
+            'judul'       => $this->request->getPost('judul'),
+            'isi_konten'  => $this->request->getPost('isi_konten'),
+            'url_media'   => $this->request->getPost('url_media'),
+        ];
+
+        // Jika modul_id dikirim, update juga
+        $modulId = $this->request->getPost('modul_id');
+        if ($modulId) {
+            $updateData['modul_id'] = $modulId;
+        }
+
+        $model->update($id, $updateData);
+
+        return redirect()->to('/guru/materi')->with('success', 'Konten berhasil diupdate!');
+    }
 }

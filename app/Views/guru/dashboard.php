@@ -32,13 +32,13 @@
             </div>
         </div>
 
-        <!-- MENU KELOLA SOAL -->
+        <!-- MENU KELOLA (4 KOLOM) -->
         <div class="card card-shadow p-4 mt-4">
             <h4 class="fw-bold mb-3"><i class="fas fa-cogs text-primary me-2"></i>Menu Kelola</h4>
             <hr>
-            <div class="row mt-3">
-                <!-- Kelola Soal VARK -->
-                <div class="col-md-4 mb-3">
+            <div class="row mt-3 row-cols-1 row-cols-md-4 g-3">
+                <!-- 1. Kelola Soal VARK -->
+                <div class="col">
                     <div class="card border-primary h-100">
                         <div class="card-body text-center">
                             <i class="fas fa-list-ul fa-3x text-primary mb-3"></i>
@@ -51,8 +51,8 @@
                     </div>
                 </div>
 
-                <!-- Lihat Hasil VARK Siswa -->
-                <div class="col-md-4 mb-3">
+                <!-- 2. Hasil VARK Siswa -->
+                <div class="col">
                     <div class="card border-success h-100">
                         <div class="card-body text-center">
                             <i class="fas fa-chart-bar fa-3x text-success mb-3"></i>
@@ -65,14 +65,28 @@
                     </div>
                 </div>
 
-                <!-- Kelola Soal ZPD -->
-                <div class="col-md-4 mb-3">
+                <!-- 3. Kelola Soal ZPD -->
+                <div class="col">
                     <div class="card border-warning h-100">
                         <div class="card-body text-center">
                             <i class="fas fa-flask fa-3x text-warning mb-3"></i>
                             <h5>Kelola Soal ZPD</h5>
                             <p class="text-muted small">Kelola soal ZPD per modul</p>
-                            <a href="#" class="btn btn-warning btn-sm">
+                            <a href="<?= base_url('guru/zpd/soal') ?>" class="btn btn-warning btn-sm text-white">
+                                <i class="fas fa-arrow-right"></i> Kelola
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Kelola Materi Adaptif -->
+                <div class="col">
+                    <div class="card border-secondary h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-cubes fa-3x text-secondary mb-3"></i>
+                            <h5>Kelola Materi Adaptif</h5>
+                            <p class="text-muted small">Edit 36 variasi konten adaptif</p>
+                            <a href="<?= base_url('guru/materi') ?>" class="btn btn-secondary btn-sm text-white">
                                 <i class="fas fa-arrow-right"></i> Kelola
                             </a>
                         </div>

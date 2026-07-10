@@ -21,6 +21,11 @@ $routes->get('siswa/dashboard', 'AuthController::studentDashboard');
 
 // ========== MODUL SISWA ==========
 $routes->get('siswa/modul', 'ModulController::index');
+$routes->get('siswa/profil', 'AuthController::profil');
+
+// ========== MATERI ADAPTIF ==========
+$routes->get('materi/(:num)', 'MateriController::index/$1');
+
 
 // ========== PLACEHOLDER UNTUK FITUR BELUM DIBUAT ==========
 $routes->get('vark', 'VarkController::index');
@@ -30,6 +35,11 @@ $routes->get('materi/(:num)', 'MateriController::index/$1');
 // ========== GURU ==========
 $routes->get('guru/dashboard', 'GuruController::dashboard');
 
+// ========== GURU KELOLA MATERI ADAPTIF ==========
+$routes->get('guru/materi', 'GuruController::materiIndex');
+$routes->get('guru/materi/edit/(:num)', 'GuruController::materiEdit/$1');
+$routes->post('guru/materi/update/(:num)', 'GuruController::materiUpdate/$1');
+
 // KELOLA SOAL VARK
 $routes->get('guru/vark/soal', 'GuruController::varkSoal');
 $routes->get('guru/vark/soal/tambah', 'GuruController::varkSoalTambah');
@@ -37,6 +47,7 @@ $routes->post('guru/vark/soal/simpan', 'GuruController::varkSoalSimpan');
 $routes->get('guru/vark/soal/edit/(:num)', 'GuruController::varkSoalEdit/$1');
 $routes->post('guru/vark/soal/update/(:num)', 'GuruController::varkSoalUpdate/$1');
 $routes->get('guru/vark/soal/hapus/(:num)', 'GuruController::varkSoalHapus/$1');
+
 
 // Hasil VARK Siswa
 $routes->get('guru/vark/hasil', 'GuruController::varkHasil');
@@ -48,3 +59,9 @@ $routes->get('vark/soal', 'VarkController::soal');
 $routes->post('vark/submit', 'VarkController::submit');
 $routes->get('vark/hasil', 'VarkController::hasil');
 
+// ========== ZPD ==========
+$routes->get('zpd/test/(:num)', 'ZpdController::test/$1');
+$routes->get('zpd/start/(:num)', 'ZpdController::start/$1');
+$routes->get('zpd/soal/(:num)', 'ZpdController::soal/$1');
+$routes->post('zpd/submit/(:num)', 'ZpdController::submit/$1');
+$routes->get('zpd/hasil/(:num)', 'ZpdController::hasil/$1');

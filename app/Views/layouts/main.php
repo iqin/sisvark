@@ -59,16 +59,29 @@
             <!-- Bagian Kanan Navbar -->
             <div class="d-flex">
                 <?php if (session()->get('isLoggedIn')): ?>
-                    <span class="navbar-text me-3">
-                        <i class="fas fa-user-circle"></i> <?= session()->get('name') ?>
-                    </span>
-                    <a href="<?= base_url('logout') ?>" class="btn btn-outline-danger btn-sm">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </a>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-1"></i> <?= session()->get('name') ?>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <?php if (session()->get('role') === 'siswa'): ?>
+                                <li><a class="dropdown-item" href="<?= base_url('siswa/profil') ?>">
+                                    <i class="fas fa-id-card me-2"></i> Profil Saya
+                                </a></li>
+                            <?php endif; ?>
+                            <?php if (session()->get('role') === 'guru'): ?>
+                                <li><a class="dropdown-item" href="<?= base_url('guru/dashboard') ?>">
+                                    <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                                </a></li>
+                            <?php endif; ?>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="<?= base_url('logout') ?>">
+                                <i class="fas fa-sign-out-alt me-2"></i> Logout
+                            </a></li>
+                        </ul>
+                    </div>
                 <?php else: ?>
-                    <a href="<?= base_url('login') ?>" class="btn btn-primary btn-sm">
-                        <i class="fas fa-sign-in-alt me-1"></i> Login
-                    </a>
+                    <a href="<?= base_url('login') ?>" class="btn btn-primary btn-sm">Login</a>
                 <?php endif; ?>
             </div>
         </div>

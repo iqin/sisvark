@@ -1,5 +1,11 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
+<?php if (isset($timeout) && $timeout): ?>
+    <div class="alert alert-warning text-center">
+        <i class="fas fa-clock me-2"></i>
+        <strong>⚠️ Waktu habis!</strong> Jawaban yang sudah diisi tetap tersimpan.
+    </div>
+<?php endif; ?>
 <div class="row justify-content-center mt-4">
     <div class="col-md-8 col-lg-7">
         <div class="card card-shadow">

@@ -147,18 +147,40 @@ class VarkController extends BaseController
         $elapsed = time() - $startTime;
         $remaining = 600 - $elapsed;
 
+        // =============================================================
+        // PERUBAHAN: JIKA WAKTU HABIS, TETAP PROSES JAWABAN YANG ADA
+        // JANGAN LANGSUNG REDIRECT KE TIMEOUT
+        // =============================================================
         if ($remaining <= 0) {
-            $sessionModel->delete($sessionData['id']);
-            return redirect()->to('/vark/hasil?timeout=1');
+            // Waktu habis, tapi kita tetap proses jawaban yang sudah diisi
+            // Hapus sesi nanti setelah menyimpan hasil
+            // Lanjutkan ke proses penyimpanan
         }
 
         $answers = $this->request->getPost('answers');
-        if (!$answers || count($answers) !== 10) {
-            return redirect()->to('/vark/soal')->with('error', 'Silakan jawab semua pertanyaan!');
+
+        // =============================================================
+        // Jika tidak ada jawaban sama sekali, maka timeout tanpa jawaban
+        // =============================================================
+        if (!$answers) {
+            // Hapus sesi dan redirect ke timeout
+            $sessionModel->delete($sessionData['id']);
+            session()->remove('vark_question_order');
+            return redirect()->to('/vark/hasil?timeout=1');
         }
 
-        $result = classify_vark($answers);
+        // =============================================================
+        // Isi jawaban yang kosong dengan string kosong
+        // =============================================================
+        $filledAnswers = [];
+        for ($i = 1; $i <= 10; $i++) {
+            $filledAnswers[$i] = $answers[$i] ?? '';
+        }
 
+        // Klasifikasi menggunakan helper
+        $result = classify_vark($filledAnswers);
+
+        // Simpan ke database (termasuk jika waktu habis)
         $model->save([
             'pengguna_id'    => $userId,
             'skor_v'         => $result['scores']['V'],
@@ -175,11 +197,16 @@ class VarkController extends BaseController
         $sessionModel->delete($sessionData['id']);
         session()->remove('vark_question_order');
 
+        // =============================================================
+        // Jika waktu habis, tambahkan pesan di hasil
+        // =============================================================
         $data = [
             'title'  => 'Hasil Tes VARK',
             'result' => $result,
-            'nama'   => session()->get('name')
+            'nama'   => session()->get('name'),
+            'timeout' => ($remaining <= 0) ? true : false, // kirim flag timeout
         ];
+
         return view('vark/hasil', $data);
     }
 

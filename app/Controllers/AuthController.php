@@ -119,7 +119,9 @@ class AuthController extends BaseController
             'zpdMod1' => $zpdMod1,
         ];
         
-        return view('siswa/dashboard', $data);
+        //return view('siswa/dashboard', $data);
+        // Redirect ke halaman modul
+        return redirect()->to('/siswa/modul');
     }
 
     // ======== DASHBOARD GURU ========
@@ -142,6 +144,36 @@ class AuthController extends BaseController
         if (session()->get('role') === 'guru') {
             return redirect()->to('/guru/dashboard');
         }
-        return redirect()->to('/siswa/dashboard');
+        return redirect()->to('/siswa/modul');
+    }
+
+    // ======== HALAMAN PROFIL SISWA ========
+    public function profil()
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
+            return redirect()->to('/login');
+        }
+
+        $userId = session()->get('user_id');
+
+        // Ambil hasil VARK
+        $varkModel = new \App\Models\VarkResultModel();
+        $varkResult = $varkModel->where('pengguna_id', $userId)->orderBy('id', 'DESC')->first();
+
+        // Ambil ZPD per modul
+        $zpdModel = new \App\Models\ZpdResultModel();
+        $zpdMod1 = $zpdModel->where(['pengguna_id' => $userId, 'modul_id' => 1])->first();
+        $zpdMod2 = $zpdModel->where(['pengguna_id' => $userId, 'modul_id' => 2])->first();
+        $zpdMod3 = $zpdModel->where(['pengguna_id' => $userId, 'modul_id' => 3])->first();
+
+        $data = [
+            'title'    => 'Profil Saya',
+            'varkResult' => $varkResult,
+            'zpdMod1'  => $zpdMod1,
+            'zpdMod2'  => $zpdMod2,
+            'zpdMod3'  => $zpdMod3,
+        ];
+
+        return view('siswa/profil', $data);
     }
 }
