@@ -48,6 +48,13 @@ $routes->get('guru/vark/soal/edit/(:num)', 'GuruController::varkSoalEdit/$1');
 $routes->post('guru/vark/soal/update/(:num)', 'GuruController::varkSoalUpdate/$1');
 $routes->get('guru/vark/soal/hapus/(:num)', 'GuruController::varkSoalHapus/$1');
 
+// ========== KELOLA SOAL ZPD ==========
+$routes->get('guru/zpd/soal', 'GuruController::zpdSoal');
+$routes->get('guru/zpd/soal/tambah', 'GuruController::zpdSoalTambah');
+$routes->post('guru/zpd/soal/simpan', 'GuruController::zpdSoalSimpan');
+$routes->get('guru/zpd/soal/edit/(:num)', 'GuruController::zpdSoalEdit/$1');
+$routes->post('guru/zpd/soal/update/(:num)', 'GuruController::zpdSoalUpdate/$1');
+$routes->get('guru/zpd/soal/hapus/(:num)', 'GuruController::zpdSoalHapus/$1');
 
 // Hasil VARK Siswa
 $routes->get('guru/vark/hasil', 'GuruController::varkHasil');

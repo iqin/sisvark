@@ -45,11 +45,6 @@
                             2 => 'Organel Sel',
                             3 => 'Transpor Membran'
                         ];
-                        $modulIcons = [
-                            1 => 'fa-microscope',
-                            2 => 'fa-dna',
-                            3 => 'fa-exchange-alt'
-                        ];
                         $modulColors = [
                             1 => 'primary',
                             2 => 'success',
@@ -66,47 +61,49 @@
                             $isLocked = !$status['done'];
                             $color = $modulColors[$i];
                             $bgColor = $modulBgColors[$i];
+                            $imgPath = base_url('assets/images/modul_' . $i . '.png');
                         ?>
                         <div class="col-md-4 mb-3">
-                            <div class="card h-100 border-<?= $isLocked ? 'secondary' : $color ?> shadow-sm">
+                            <div class="card h-100 border-<?= $isLocked ? 'secondary' : $color ?> shadow-sm hover-card">
                                 <div class="card-body text-center">
-                                    <!-- Ikon -->
-                                    <div class="rounded-circle <?= $isLocked ? 'bg-secondary' : $bgColor ?> text-white d-inline-flex align-items-center justify-content-center mb-3" 
-                                         style="width: 70px; height: 70px;">
-                                        <i class="fas <?= $modulIcons[$i] ?> fa-2x"></i>
+                                    <!-- Gambar Modul -->
+                                    <div class="modul-icon-container mb-3">
+                                        <img src="<?= $imgPath ?>" 
+                                             alt="Modul <?= $i ?>"
+                                             class="modul-icon"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="modul-icon-fallback <?= $isLocked ? 'bg-secondary' : $bgColor ?>">
+                                            <i class="fas <?= $isLocked ? 'fa-lock' : 'fa-book-open' ?> fa-2x text-white"></i>
+                                        </div>
                                     </div>
 
                                     <h5 class="card-title <?= $isLocked ? 'text-muted' : 'text-' . $color ?>">
                                         Modul <?= $i ?>
                                     </h5>
-                                    <p class="card-text small text-muted"><?= $modulNames[$i] ?></p>
+                                    <p class="card-text small text-muted mb-2"><?= $modulNames[$i] ?></p>
 
                                     <?php if ($isLocked): ?>
                                         <!-- ===================================================== -->
-                                        <!-- MODUL TERKUNCI (ZPD BELUM DIKERJAKAN) -->
+                                        <!-- MODUL TERKUNCI -->
                                         <!-- ===================================================== -->
-                                        <div class="mt-2">
-                                            <span class="badge bg-secondary mb-2">
-                                                <i class="fas fa-lock me-1"></i> Terkunci
-                                            </span>
-                                        </div>
-                                        <p class="text-muted small">
+                                        <span class="badge bg-secondary mb-2">
+                                            <i class="fas fa-lock me-1"></i> Terkunci
+                                        </span>
+                                        <p class="text-muted small mb-2">
                                             <i class="fas fa-info-circle me-1"></i> 
                                             Kerjakan tes ZPD untuk membuka modul ini.
                                         </p>
-                                        <a href="<?= base_url('zpd/test/' . $i) ?>" class="btn btn-outline-warning btn-sm mt-2">
+                                        <a href="<?= base_url('zpd/test/' . $i) ?>" class="btn btn-outline-warning btn-sm">
                                             <i class="fas fa-flask me-1"></i> Ikuti Tes ZPD
                                         </a>
                                     <?php else: ?>
                                         <!-- ===================================================== -->
-                                        <!-- MODUL TERBUKA (ZPD SUDAH DIKERJAKAN) -->
+                                        <!-- MODUL TERBUKA -->
                                         <!-- ===================================================== -->
-                                        <div class="mt-2">
-                                            <span class="badge bg-success mb-2">
-                                                <i class="fas fa-check-circle me-1"></i> Siap Dipelajari
-                                            </span>
-                                        </div>
-                                        <div class="small text-muted">
+                                        <span class="badge bg-success mb-2">
+                                            <i class="fas fa-check-circle me-1"></i> Siap Dipelajari
+                                        </span>
+                                        <div class="small text-muted mb-2">
                                             <strong>Level ZPD:</strong> 
                                             <?php
                                             $levelLabels = [
@@ -127,7 +124,6 @@
                                             <br>
                                             <span class="text-muted">Skor: <strong><?= $status['score'] ?? 0 ?></strong></span>
                                         </div>
-                                        <br>
                                         <a href="<?= base_url('materi/' . $i) ?>" class="btn btn-<?= $color ?> btn-sm text-white">
                                             <i class="fas fa-book me-1"></i> Mulai Belajar
                                         </a>
@@ -142,4 +138,36 @@
         </div>
     </div>
 </div>
+
+<style>
+.hover-card {
+    transition: all 0.3s ease;
+}
+.hover-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+}
+.modul-icon-container {
+    position: relative;
+    width: 100%;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modul-icon {
+    max-height: 90px;
+    max-width: 90px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+.modul-icon-fallback {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+</style>
 <?= $this->endSection() ?>

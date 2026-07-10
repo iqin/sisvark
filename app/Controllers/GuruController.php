@@ -292,4 +292,145 @@ class GuruController extends BaseController
 
         return redirect()->to('/guru/materi')->with('success', 'Konten berhasil diupdate!');
     }
+
+    // ======== KELOLA SOAL ZPD ========
+    public function zpdSoal()
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $model = new \App\Models\ZpdSoalModel();
+        $data['soal'] = $model->select('zpd_soal.*, modul.judul as modul_judul')
+                            ->join('modul', 'modul.id = zpd_soal.modul_id')
+                            ->orderBy('zpd_soal.modul_id', 'ASC')
+                            ->orderBy('zpd_soal.level_zpd', 'ASC')
+                            ->findAll();
+        $data['title'] = 'Kelola Soal ZPD';
+        return view('guru/zpd_soal', $data);
+    }
+
+    public function zpdSoalTambah()
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $modulModel = new \App\Models\ModulModel();
+        $data['modul'] = $modulModel->findAll();
+        $data['title'] = 'Tambah Soal ZPD';
+        return view('guru/zpd_soal_tambah', $data);
+    }
+
+    public function zpdSoalSimpan()
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $model = new \App\Models\ZpdSoalModel();
+
+        $rules = [
+            'modul_id'      => 'required|integer',
+            'level_zpd'     => 'required|in_list[dasar,menengah,lanjut]',
+            'bobot_nilai'   => 'required|integer|in_list[5,10,15]',
+            'teks_soal'     => 'required',
+            'opsi_a'        => 'required',
+            'opsi_b'        => 'required',
+            'opsi_c'        => 'required',
+            'opsi_d'        => 'required',
+            'jawaban_benar' => 'required|in_list[A,B,C,D]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->to('/guru/zpd/soal/tambah')
+                            ->withInput()
+                            ->with('errors', $this->validator->getErrors());
+        }
+
+        $model->save([
+            'modul_id'      => $this->request->getPost('modul_id'),
+            'level_zpd'     => $this->request->getPost('level_zpd'),
+            'bobot_nilai'   => $this->request->getPost('bobot_nilai'),
+            'teks_soal'     => $this->request->getPost('teks_soal'),
+            'opsi_a'        => $this->request->getPost('opsi_a'),
+            'opsi_b'        => $this->request->getPost('opsi_b'),
+            'opsi_c'        => $this->request->getPost('opsi_c'),
+            'opsi_d'        => $this->request->getPost('opsi_d'),
+            'jawaban_benar' => $this->request->getPost('jawaban_benar'),
+        ]);
+
+        return redirect()->to('/guru/zpd/soal')->with('success', 'Soal ZPD berhasil ditambahkan!');
+    }
+
+    public function zpdSoalEdit($id)
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $model = new \App\Models\ZpdSoalModel();
+        $data['soal'] = $model->find($id);
+        if (!$data['soal']) {
+            return redirect()->to('/guru/zpd/soal')->with('error', 'Soal tidak ditemukan!');
+        }
+
+        $modulModel = new \App\Models\ModulModel();
+        $data['modul'] = $modulModel->findAll();
+        $data['title'] = 'Edit Soal ZPD';
+        return view('guru/zpd_soal_edit', $data);
+    }
+
+    public function zpdSoalUpdate($id)
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $model = new \App\Models\ZpdSoalModel();
+
+        $rules = [
+            'modul_id'      => 'required|integer',
+            'level_zpd'     => 'required|in_list[dasar,menengah,lanjut]',
+            'bobot_nilai'   => 'required|integer|in_list[5,10,15]',
+            'teks_soal'     => 'required',
+            'opsi_a'        => 'required',
+            'opsi_b'        => 'required',
+            'opsi_c'        => 'required',
+            'opsi_d'        => 'required',
+            'jawaban_benar' => 'required|in_list[A,B,C,D]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->to('/guru/zpd/soal/edit/' . $id)
+                            ->withInput()
+                            ->with('errors', $this->validator->getErrors());
+        }
+
+        $model->update($id, [
+            'modul_id'      => $this->request->getPost('modul_id'),
+            'level_zpd'     => $this->request->getPost('level_zpd'),
+            'bobot_nilai'   => $this->request->getPost('bobot_nilai'),
+            'teks_soal'     => $this->request->getPost('teks_soal'),
+            'opsi_a'        => $this->request->getPost('opsi_a'),
+            'opsi_b'        => $this->request->getPost('opsi_b'),
+            'opsi_c'        => $this->request->getPost('opsi_c'),
+            'opsi_d'        => $this->request->getPost('opsi_d'),
+            'jawaban_benar' => $this->request->getPost('jawaban_benar'),
+        ]);
+
+        return redirect()->to('/guru/zpd/soal')->with('success', 'Soal ZPD berhasil diupdate!');
+    }
+
+    public function zpdSoalHapus($id)
+    {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
+            return redirect()->to('/login');
+        }
+
+        $model = new \App\Models\ZpdSoalModel();
+        $model->delete($id);
+
+        return redirect()->to('/guru/zpd/soal')->with('success', 'Soal ZPD berhasil dihapus!');
+    }
 }
