@@ -28,7 +28,6 @@ $routes->get('materi/(:num)', 'MateriController::index/$1');
 
 
 // ========== PLACEHOLDER UNTUK FITUR BELUM DIBUAT ==========
-$routes->get('vark', 'VarkController::index');
 $routes->get('zpd/test/(:num)', 'ZpdController::test/$1');
 $routes->get('materi/(:num)', 'MateriController::index/$1');
 

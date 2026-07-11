@@ -5,17 +5,17 @@ namespace App\Controllers;
 use App\Models\ZpdSoalModel;
 use App\Models\ZpdResultModel;
 use App\Models\VarkResultModel;
+use App\Models\ZpdTestSessionModel;
 
 class ZpdController extends BaseController
 {
-    // ======== HALAMAN INTRO ZPD (Halaman 6) ========
+    // ======== HALAMAN INTRO ZPD ========
     public function test($moduleId = 1)
     {
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
             return redirect()->to('/login');
         }
 
-        // Cek apakah sudah pernah mengerjakan ZPD modul ini
         $resultModel = new ZpdResultModel();
         $existing = $resultModel->where([
             'pengguna_id' => session()->get('user_id'),
@@ -26,7 +26,6 @@ class ZpdController extends BaseController
             return redirect()->to('/siswa/modul')->with('info', "Anda sudah mengerjakan ZPD Modul {$moduleId}.");
         }
 
-        // Cek apakah VARK sudah dikerjakan
         $varkModel = new VarkResultModel();
         $vark = $varkModel->where('pengguna_id', session()->get('user_id'))->first();
         if (!$vark) {
@@ -48,7 +47,7 @@ class ZpdController extends BaseController
         return view('zpd/intro', $data);
     }
 
-    // ======== MULAI TES ZPD (SET TIMER) ========
+    // ======== MULAI TES ZPD (SIMPAN START_TIME DI DATABASE) ========
     public function start($moduleId = 1)
     {
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
@@ -65,14 +64,32 @@ class ZpdController extends BaseController
             return redirect()->to('/siswa/modul')->with('info', "Anda sudah mengerjakan ZPD Modul {$moduleId}.");
         }
 
-        // Set start_time di session (key unik per modul)
-        $sessionKey = 'zpd_start_' . $moduleId;
-        session()->set($sessionKey, time());
+        $userId = session()->get('user_id');
+        $sessionModel = new ZpdTestSessionModel();
+
+        // Cek apakah sudah ada sesi di database untuk modul ini
+        $existingSession = $sessionModel->where([
+            'user_id' => $userId,
+            'module_id' => $moduleId
+        ])->first();
+
+        if ($existingSession) {
+            // Jika sudah ada, langsung redirect ke soal (tanpa membuat start_time baru)
+            return redirect()->to('/zpd/soal/' . $moduleId);
+        }
+
+        // Belum ada sesi, buat baru
+        $startTime = time();
+        $sessionModel->save([
+            'user_id' => $userId,
+            'module_id' => $moduleId,
+            'start_time' => $startTime,
+        ]);
 
         return redirect()->to('/zpd/soal/' . $moduleId);
     }
 
-    // ======== HALAMAN SOAL ZPD (Halaman 7) ========
+    // ======== HALAMAN SOAL ZPD ========
     public function soal($moduleId = 1)
     {
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
@@ -89,19 +106,25 @@ class ZpdController extends BaseController
             return redirect()->to('/siswa/modul')->with('info', "Anda sudah mengerjakan ZPD Modul {$moduleId}.");
         }
 
-        // Cek timer
-        $sessionKey = 'zpd_start_' . $moduleId;
-        $startTime = session()->get($sessionKey);
+        $userId = session()->get('user_id');
+        $sessionModel = new ZpdTestSessionModel();
 
-        if (!$startTime) {
+        // Ambil sesi dari database
+        $sessionData = $sessionModel->where([
+            'user_id' => $userId,
+            'module_id' => $moduleId
+        ])->first();
+
+        if (!$sessionData) {
             return redirect()->to('/zpd/test/' . $moduleId);
         }
 
+        $startTime = $sessionData['start_time'];
         $elapsed = time() - $startTime;
-        $remaining = 600 - $elapsed; // 10 menit
+        $remaining = 600 - $elapsed;
 
         if ($remaining <= 0) {
-            session()->remove($sessionKey);
+            $sessionModel->delete($sessionData['id']);
             return redirect()->to('/zpd/hasil/' . $moduleId . '?timeout=1');
         }
 
@@ -143,28 +166,36 @@ class ZpdController extends BaseController
             return redirect()->to('/siswa/modul')->with('info', "Anda sudah mengerjakan ZPD Modul {$moduleId}.");
         }
 
-        // Cek timer
-        $sessionKey = 'zpd_start_' . $moduleId;
-        $startTime = session()->get($sessionKey);
+        $userId = session()->get('user_id');
+        $sessionModel = new ZpdTestSessionModel();
 
-        if (!$startTime) {
+        // Ambil sesi dari database
+        $sessionData = $sessionModel->where([
+            'user_id' => $userId,
+            'module_id' => $moduleId
+        ])->first();
+
+        if (!$sessionData) {
             return redirect()->to('/zpd/test/' . $moduleId);
         }
 
+        $startTime = $sessionData['start_time'];
         $elapsed = time() - $startTime;
         $remaining = 600 - $elapsed;
 
-        // Jika waktu habis, tetap proses tapi tandai timeout
+        // Jika waktu habis, tetap proses jawaban yang ada
         $isTimeout = ($remaining <= 0);
         if ($isTimeout) {
-            session()->remove($sessionKey);
             // Lanjutkan proses (tetap simpan jawaban yang ada)
+            // Jangan hapus sesi dulu, nanti dihapus setelah selesai
         }
 
         $answers = $this->request->getPost('answers');
 
+        // Jika tidak ada jawaban sama sekali, redirect timeout
         if (!$answers) {
-            return redirect()->to('/zpd/soal/' . $moduleId)->with('error', 'Silakan jawab setidaknya satu pertanyaan!');
+            $sessionModel->delete($sessionData['id']);
+            return redirect()->to('/zpd/hasil/' . $moduleId . '?timeout=1');
         }
 
         // Ambil kunci jawaban
@@ -193,7 +224,7 @@ class ZpdController extends BaseController
             }
         }
 
-        // Tentukan level ZPD (menggunakan aturan di proposal)
+        // Tentukan level ZPD
         if ($totalScore < 50) {
             $zpdLevel = 'novice';
         } elseif ($totalScore <= 84) {
@@ -204,15 +235,15 @@ class ZpdController extends BaseController
 
         // Simpan hasil
         $resultModel->save([
-            'pengguna_id' => session()->get('user_id'),
+            'pengguna_id' => $userId,
             'modul_id' => $moduleId,
             'total_nilai' => $totalScore,
             'level_zpd' => $zpdLevel,
             'created_at' => date('Y-m-d H:i:s')
         ]);
 
-        // Hapus session timer
-        session()->remove($sessionKey);
+        // Hapus sesi di database setelah selesai
+        $sessionModel->delete($sessionData['id']);
 
         // Tampilkan hasil
         $data = [
@@ -228,7 +259,7 @@ class ZpdController extends BaseController
         return view('zpd/hasil', $data);
     }
 
-    // ======== HALAMAN HASIL ZPD (Halaman 8) ========
+    // ======== HALAMAN HASIL ZPD (TIMEOUT) ========
     public function hasil($moduleId = 1)
     {
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
@@ -237,8 +268,11 @@ class ZpdController extends BaseController
 
         $timeout = $this->request->getGet('timeout');
         if ($timeout) {
-            $sessionKey = 'zpd_start_' . $moduleId;
-            session()->remove($sessionKey);
+            $sessionModel = new ZpdTestSessionModel();
+            $sessionModel->where([
+                'user_id' => session()->get('user_id'),
+                'module_id' => $moduleId
+            ])->delete();
             return view('zpd/hasil_timeout', [
                 'title' => 'Waktu Habis - ZPD Modul ' . $moduleId,
                 'module_id' => $moduleId
