@@ -32,7 +32,9 @@ class MateriController extends BaseController
         }
 
         // 3. Tentukan konten adaptif berdasarkan VARK + ZPD
-        $varkType = $vark['tipe_hasil']; // V, A, R, K, M
+        //$varkType = $vark['tipe_hasil']; // V, A, R, K, M
+        // 3. Tentukan konten adaptif berdasarkan VARK + ZPD
+        $varkType = $this->request->getGet('vark') ?? $vark['tipe_hasil'];
         $zpdLevel = $zpd['level_zpd'];   // novice, apprentice, master
 
         // 4. Ambil konten dari database

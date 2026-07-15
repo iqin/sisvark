@@ -1,84 +1,141 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
-<div class="row justify-content-center">
-    <div class="col-md-10">
+<div class="row">
+    <!-- KOLOM KIRI: KONTEN UTAMA + TOMBOL VARK -->
+    <div class="col-lg-8">
         <div class="card card-shadow">
-            <div class="card-body p-5">
-                <!-- Header -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h4 class="fw-bold mb-0">
-                            <i class="fas fa-book text-primary me-2"></i>Materi Adaptif
-                        </h4>
-                        <p class="text-muted small mb-0">
-                            Modul <?= $module_id ?> | 
-                            <span class="badge bg-info"><?= $vark_label ?></span> + 
-                            <span class="badge bg-secondary"><?= ucfirst($zpd_level) ?></span>
-                        </p>
-                    </div>
-                    <div>
-                        <span class="badge bg-primary">Kode: <?= $konten['kode_konten'] ?></span>
-                    </div>
-                </div>
-
-                <hr>
-
-                <!-- Profil Siswa -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h6 class="fw-bold"><i class="fas fa-user-graduate me-2"></i>Profil Anda</h6>
-                                <p class="mb-1"><strong>Gaya Belajar:</strong> <?= $vark_label ?></p>
-                                <p class="mb-0"><strong>Level ZPD:</strong> <?= ucfirst($zpd_level) ?></p>
-                            </div>
+            <div class="card-body p-4 p-md-5">
+                <!-- HEADER: Pelajaran + Modul | Ikon User + VARK/ZPD + Waktu -->
+                <div class="d-flex align-items-start justify-content-between mb-3 flex-wrap">
+                    <!-- Kiri: Ikon Buku + Pelajaran & Modul -->
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-book-open fa-2x text-primary me-3"></i>
+                        <div>
+                            <h5 class="text-muted mb-1">PELAJARAN : BIOLOGI</h5>
+                            <?php
+                            $modulNames = [
+                                1 => 'STRUKTUR SEL',
+                                2 => 'ORGANEL SEL',
+                                3 => 'TRANSPOR MEMBRAN'
+                            ];
+                            ?>
+                            <h4 class="fw-bold">MODUL : <?= $modulNames[$module_id] ?? 'MODUL ' . $module_id ?></h4>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card bg-<?= ($scaffolding['level'] == 'high') ? 'danger' : (($scaffolding['level'] == 'fading') ? 'warning' : 'success') ?> text-white">
-                            <div class="card-body">
-                                <h6 class="fw-bold"><i class="fas fa-life-ring me-2"></i><?= $scaffolding['label'] ?></h6>
-                                <p class="mb-0"><?= $scaffolding['description'] ?></p>
-                            </div>
+
+                    <!-- Kanan: Ikon User + VARK + ZPD + Waktu (sejajar) -->
+                    <div class="d-flex align-items-center gap-3 flex-wrap mt-2 mt-md-0">
+                        <i class="fas fa-user-graduate fa-2x text-primary"></i>
+                        <div class="d-flex flex-column align-items-start">
+                            <span class="badge bg-primary">VARK: <?= $vark_label ?> (<?= strtoupper($vark_type) ?>)</span>
+                            <span class="badge bg-secondary mt-1">ZPD: <?= ucfirst($zpd_level) ?></span>
+                        </div>
+                        <div>
+                            <span class="badge bg-dark fs-6">30:50</span>
                         </div>
                     </div>
                 </div>
-
-                <!-- Judul Materi -->
-                <h5 class="fw-bold text-primary mb-3"><?= esc($konten['judul']) ?></h5>
-
-                <!-- Isi Konten -->
-                <div class="card border-0 bg-light p-4 mb-4">
-                    <?= $konten['isi_konten'] ?? '<p class="text-muted">Konten sedang dalam pengembangan.</p>' ?>
-                </div>
-
-                <!-- URL Media (jika ada) -->
-                <?php if (!empty($konten['url_media'])): ?>
-                    <div class="mb-4">
-                        <h6 class="fw-bold"><i class="fas fa-link me-2"></i>Media Pendukung</h6>
-                        <a href="<?= esc($konten['url_media']) ?>" target="_blank" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-external-link-alt me-1"></i> Buka Media
-                        </a>
-                    </div>
-                <?php endif; ?>
-
                 <hr>
 
-                <!-- Tombol Navigasi -->
-                <div class="d-flex justify-content-between mt-3">
-                    <a href="<?= base_url('siswa/modul') ?>" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left me-1"></i> Kembali ke Modul
-                    </a>
-                    <div>
-                        <?php if ($module_id < 3): ?>
-                            <a href="<?= base_url('materi/' . ($module_id + 1)) ?>" class="btn btn-success">
-                                Modul Selanjutnya <i class="fas fa-arrow-right ms-1"></i>
-                            </a>
-                        <?php else: ?>
-                            <a href="<?= base_url('siswa/modul') ?>" class="btn btn-primary-custom">
-                                <i class="fas fa-check me-1"></i> Selesai Semua Modul
-                            </a>
+                <!-- KONTEN UTAMA: TOMBOL VARK VERTIKAL DI KIRI + MATERI DI KANAN -->
+                <div class="row mt-3">
+                    <!-- Tombol VARK Vertikal dengan Ikon (kiri) -->
+                    <div class="col-3 col-md-2">
+                        <div class="d-flex flex-column gap-2">
+                            <?php
+                            $varkLabels = ['V' => 'Visual', 'A' => 'Auditory', 'R' => 'Read/Write', 'K' => 'Kinestetik'];
+                            $varkIcons = [
+                                'V' => 'fa-eye',
+                                'A' => 'fa-headphones',
+                                'R' => 'fa-pen',
+                                'K' => 'fa-hand'
+                            ];
+                            foreach ($varkLabels as $key => $label):
+                                $isActive = ($key === $vark_type);
+                            ?>
+                                <a href="<?= base_url('materi/' . $module_id . '?vark=' . $key) ?>" 
+                                   class="btn btn-sm <?= $isActive ? 'btn-primary' : 'btn-outline-secondary' ?> d-flex flex-column align-items-center py-2"
+                                   style="font-size: 0.65rem; line-height: 1.2; text-decoration: none; border-radius: 0.5rem;"
+                                   title="<?= $label ?>">
+                                    <i class="fas <?= $varkIcons[$key] ?> fa-lg mb-1"></i>
+                                    <span><?= $label ?></span>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <!-- Konten Materi (kanan) -->
+                    <div class="col-9 col-md-10">
+                        <h5 class="fw-bold"><?= esc($konten['judul'] ?? 'Materi') ?></h5>
+                        <div class="mt-2">
+                            <?= $konten['isi_konten'] ?? '<p class="text-muted">Belum ada konten untuk kombinasi ini.</p>' ?>
+                        </div>
+                        <?php if (!empty($konten['url_media'])): ?>
+                            <div class="mt-3">
+                                <a href="<?= base_url($konten['url_media']) ?>" target="_blank" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-external-link-alt me-1"></i> Lihat Media Pembelajaran
+                                </a>
+                            </div>
                         <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- NAVIGASI BAWAH -->
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <a href="<?= base_url('siswa/modul') ?>" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i> Kembali
+                    </a>
+                    <a href="#" class="btn btn-primary btn-sm" onclick="alert('Fitur lanjut ke post-test atau modul berikutnya akan segera hadir.');">
+                        Lanjut <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KOLOM KANAN: PANEL INTERAKSI -->
+    <div class="col-lg-4">
+        <div class="card card-shadow">
+            <div class="card-body p-4">
+                <!-- Header Sistem Pembelajaran Berdiferensiasi dengan Logo -->
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        
+                        <span class="fw-bold" style="font-size: 0.9rem; letter-spacing: 0.5px;">
+                            SISTEM PEMBELAJARAN<br>BERDIFERENSIASI
+                        </span>
+                    </div>
+                    <div>
+                        <img src="<?= base_url('assets/images/logo.png') ?>" 
+                             alt="Logo" 
+                             style="height: 40px; width: auto;"
+                             onerror="this.style.display='none'">
+                    </div>
+                </div>
+
+                <!-- Area CTA -->
+                <div class="d-grid gap-2">
+                    <?php if ($zpd_level == 'novice'): ?>
+                        <button class="btn btn-outline-primary btn-sm text-start py-2" onclick="alert('Fitur Lihat Penilaian Detail untuk materi ini.')">
+                            <i class="fas fa-file-alt me-2"></i> LIHAT PENJELASAN DETAIL UNTUK MATERI INI
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if ($zpd_level == 'apprentice'): ?>
+                        <button class="btn btn-outline-warning btn-sm text-start py-2" onclick="alert('Fitur Bantuan aktif.')">
+                            <i class="fas fa-question-circle me-2"></i> MUNGKIN KAMU BUTUH BANTUAN
+                        </button>
+                    <?php endif; ?>
+
+                    <button class="btn btn-outline-success btn-sm text-start py-2" onclick="alert('Arahkan ke halaman Post Test.')">
+                        <i class="fas fa-check-circle me-2"></i> JIKA SUDAH PAHAM SILAKAN IKUT POSTEST
+                    </button>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-danger btn-sm text-start py-2 flex-grow-1" onclick="alert('Fitur Tanya Guru akan menghubungkan Anda dengan guru.')">
+                            <i class="fas fa-chalkboard-teacher me-2"></i> KLIK SAYA JIKA KAMU BUTUH BANTUAN GURUMU
+                        </button>
+                        <i class="fas fa-user-tie fa-2x text-secondary"></i>
                     </div>
                 </div>
             </div>
