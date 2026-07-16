@@ -1,8 +1,8 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
 <div class="row">
-    <!-- KOLOM KIRI: KONTEN UTAMA + TOMBOL VARK -->
-    <div class="col-lg-8">
+    <!-- KOLOM KIRI: KONTEN UTAMA + TOMBOL VARK (LEBIH LEBAR) -->
+    <div class="col-lg-9">
         <div class="card card-shadow">
             <div class="card-body p-4 p-md-5">
                 <!-- HEADER: Pelajaran + Modul | Ikon User + VARK/ZPD + Waktu -->
@@ -37,35 +37,40 @@
                 </div>
                 <hr>
 
-                <!-- KONTEN UTAMA: TOMBOL VARK VERTIKAL DI KIRI + MATERI DI KANAN -->
+                <!-- KONTEN UTAMA: TOMBOL VARK VERTIKAL (HANYA IKON + TOOLTIP) + MATERI DI KANAN -->
                 <div class="row mt-3">
-                    <!-- Tombol VARK Vertikal dengan Ikon (kiri) -->
-                    <div class="col-3 col-md-2">
-                        <div class="d-flex flex-column gap-2">
+                    <!-- Tombol VARK Vertikal dengan Ikon saja dan Tooltip -->
+                    <div class="col-2 col-md-1">
+                        <div class="d-flex flex-column gap-3">
                             <?php
-                            $varkLabels = ['V' => 'Visual', 'A' => 'Auditory', 'R' => 'Read/Write', 'K' => 'Kinestetik'];
                             $varkIcons = [
                                 'V' => 'fa-eye',
                                 'A' => 'fa-headphones',
                                 'R' => 'fa-pen',
                                 'K' => 'fa-hand'
                             ];
-                            foreach ($varkLabels as $key => $label):
+                            $varkLabels = [
+                                'V' => 'Visual',
+                                'A' => 'Aural',
+                                'R' => 'Read/Write',
+                                'K' => 'Kinestetik'
+                            ];
+                            foreach ($varkIcons as $key => $icon):
                                 $isActive = ($key === $vark_type);
+                                $label = $varkLabels[$key];
                             ?>
                                 <a href="<?= base_url('materi/' . $module_id . '?vark=' . $key) ?>" 
-                                   class="btn btn-sm <?= $isActive ? 'btn-primary' : 'btn-outline-secondary' ?> d-flex flex-column align-items-center py-2"
-                                   style="font-size: 0.65rem; line-height: 1.2; text-decoration: none; border-radius: 0.5rem;"
+                                   class="btn btn-sm <?= $isActive ? 'btn-primary' : 'btn-outline-secondary' ?> d-flex align-items-center justify-content-center py-2 px-1"
+                                   style="font-size: 0.7rem; text-decoration: none; border-radius: 0.4rem;"
                                    title="<?= $label ?>">
-                                    <i class="fas <?= $varkIcons[$key] ?> fa-lg mb-1"></i>
-                                    <span><?= $label ?></span>
+                                    <i class="fas <?= $icon ?> fa-lg"></i>
                                 </a>
                             <?php endforeach; ?>
                         </div>
                     </div>
 
-                    <!-- Konten Materi (kanan) -->
-                    <div class="col-9 col-md-10">
+                    <!-- Konten Materi (kanan) - menyesuaikan sisa kolom -->
+                    <div class="col-10 col-md-11">
                         <h5 class="fw-bold"><?= esc($konten['judul'] ?? 'Materi') ?></h5>
                         <div class="mt-2">
                             <?= $konten['isi_konten'] ?? '<p class="text-muted">Belum ada konten untuk kombinasi ini.</p>' ?>
@@ -93,14 +98,13 @@
         </div>
     </div>
 
-    <!-- KOLOM KANAN: PANEL INTERAKSI -->
-    <div class="col-lg-4">
+    <!-- KOLOM KANAN: PANEL INTERAKSI (LEBIH SEMPIT) -->
+    <div class="col-lg-3">
         <div class="card card-shadow">
             <div class="card-body p-4">
                 <!-- Header Sistem Pembelajaran Berdiferensiasi dengan Logo -->
                 <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
                     <div class="d-flex align-items-center gap-2">
-                        
                         <span class="fw-bold" style="font-size: 0.9rem; letter-spacing: 0.5px;">
                             SISTEM PEMBELAJARAN<br>BERDIFERENSIASI
                         </span>
@@ -117,23 +121,23 @@
                 <div class="d-grid gap-2">
                     <?php if ($zpd_level == 'novice'): ?>
                         <button class="btn btn-outline-primary btn-sm text-start py-2" onclick="alert('Fitur Lihat Penilaian Detail untuk materi ini.')">
-                            <i class="fas fa-file-alt me-2"></i> LIHAT PENJELASAN DETAIL UNTUK MATERI INI
+                            <i class="fas fa-file-alt me-2"></i> Detail Materi
                         </button>
                     <?php endif; ?>
 
                     <?php if ($zpd_level == 'apprentice'): ?>
                         <button class="btn btn-outline-warning btn-sm text-start py-2" onclick="alert('Fitur Bantuan aktif.')">
-                            <i class="fas fa-question-circle me-2"></i> MUNGKIN KAMU BUTUH BANTUAN
+                            <i class="fas fa-question-circle me-2"></i> Butuh bantuan?
                         </button>
                     <?php endif; ?>
 
                     <button class="btn btn-outline-success btn-sm text-start py-2" onclick="alert('Arahkan ke halaman Post Test.')">
-                        <i class="fas fa-check-circle me-2"></i> JIKA SUDAH PAHAM SILAKAN IKUT POSTEST
+                        <i class="fas fa-check-circle me-2"></i> Post Test
                     </button>
 
                     <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-danger btn-sm text-start py-2 flex-grow-1" onclick="alert('Fitur Tanya Guru akan menghubungkan Anda dengan guru.')">
-                            <i class="fas fa-chalkboard-teacher me-2"></i> KLIK SAYA JIKA KAMU BUTUH BANTUAN GURUMU
+                            <i class="fas fa-chalkboard-teacher me-2"></i> Tanya Guru
                         </button>
                         <i class="fas fa-user-tie fa-2x text-secondary"></i>
                     </div>
@@ -142,4 +146,17 @@
         </div>
     </div>
 </div>
+
+<!-- Pastikan Bootstrap JS dan Popper.js dimuat untuk tooltip -->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Aktifkan semua tooltip di halaman
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
 <?= $this->endSection() ?>
