@@ -254,13 +254,20 @@ class GuruController extends BaseController
         }
 
         $model = new \App\Models\MateriAdaptifModel();
+        $existing = $model->find($id);
+        if (!$existing) {
+            return redirect()->to('/guru/materi')->with('error', 'Konten tidak ditemukan!');
+        }
 
-        // Hanya validasi field yang bisa diubah
+        // Validasi field yang dapat diubah
         $rules = [
-            'modul_id'    => 'permit_empty|integer',
-            'judul'       => 'required|max_length[255]',
-            'isi_konten'  => 'permit_empty',
-            'url_media'   => 'permit_empty|max_length[255]',
+            'judul'          => 'required|max_length[255]',
+            'tipe_tampilan'  => 'required|in_list[teks,gambar,audio,video,interaktif,hybrid]',
+            'gambar_url'     => 'permit_empty|max_length[255]',
+            'teks_konten'    => 'permit_empty',
+            'audio_url'      => 'permit_empty|max_length[255]',
+            'video_url'      => 'permit_empty|max_length[255]',
+            'interaktif_url' => 'permit_empty|max_length[255]',
         ];
 
         if (!$this->validate($rules)) {
@@ -269,24 +276,18 @@ class GuruController extends BaseController
                             ->with('errors', $this->validator->getErrors());
         }
 
-        // Ambil data yang sudah ada dari database untuk field yang tidak diubah
-        $existing = $model->find($id);
-        if (!$existing) {
-            return redirect()->to('/guru/materi')->with('error', 'Konten tidak ditemukan!');
-        }
-
-        // Update hanya field yang diizinkan
+        // Siapkan data update (hanya field yang diizinkan)
         $updateData = [
-            'judul'       => $this->request->getPost('judul'),
-            'isi_konten'  => $this->request->getPost('isi_konten'),
-            'url_media'   => $this->request->getPost('url_media'),
+            'judul'          => $this->request->getPost('judul'),
+            'tipe_tampilan'  => $this->request->getPost('tipe_tampilan'),
+            'gambar_url'     => $this->request->getPost('gambar_url'),
+            'teks_konten'    => $this->request->getPost('teks_konten'),
+            'audio_url'      => $this->request->getPost('audio_url'),
+            'video_url'      => $this->request->getPost('video_url'),
+            'interaktif_url' => $this->request->getPost('interaktif_url'),
         ];
 
-        // Jika modul_id dikirim, update juga
-        $modulId = $this->request->getPost('modul_id');
-        if ($modulId) {
-            $updateData['modul_id'] = $modulId;
-        }
+        // Field kode_konten, modul_id, tipe_vark, level_zpd tidak diubah (diabaikan)
 
         $model->update($id, $updateData);
 

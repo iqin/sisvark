@@ -8,7 +8,9 @@ class MateriAdaptifModel extends Model
 {
     protected $table = 'materi_adaptif';
     protected $primaryKey = 'id';
-    protected $allowedFields = ['modul_id', 'kode_konten', 'tipe_vark', 'level_zpd', 'judul', 'isi_konten', 'url_media'];
+    protected $allowedFields = [
+    'modul_id', 'kode_konten', 'tipe_vark', 'level_zpd', 'judul', 'tipe_tampilan', 'gambar_url', 
+    'teks_konten', 'audio_url', 'video_url', 'interaktif_url'];
     protected $useTimestamps = false; // Matikan timestamps karena tidak ada updated_at
 
     public function getWithModul()

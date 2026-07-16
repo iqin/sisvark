@@ -1,7 +1,7 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
 <div class="row">
-    <!-- KOLOM KIRI: KONTEN UTAMA + TOMBOL VARK (LEBIH LEBAR) -->
+    <!-- KOLOM KIRI: KONTEN UTAMA + TOMBOL VARK -->
     <div class="col-lg-9">
         <div class="card card-shadow">
             <div class="card-body p-4 p-md-5">
@@ -23,7 +23,7 @@
                         </div>
                     </div>
 
-                    <!-- Kanan: Ikon User + VARK + ZPD + Waktu (sejajar) -->
+                    <!-- Kanan: Ikon User + VARK + ZPD + Waktu -->
                     <div class="d-flex align-items-center gap-3 flex-wrap mt-2 mt-md-0">
                         <i class="fas fa-user-graduate fa-2x text-primary"></i>
                         <div class="d-flex flex-column align-items-start">
@@ -37,9 +37,9 @@
                 </div>
                 <hr>
 
-                <!-- KONTEN UTAMA: TOMBOL VARK VERTIKAL (HANYA IKON + TOOLTIP) + MATERI DI KANAN -->
+                <!-- KONTEN UTAMA: TOMBOL VARK VERTIKAL (IKON + TOOLTIP) + MATERI -->
                 <div class="row mt-3">
-                    <!-- Tombol VARK Vertikal dengan Ikon saja dan Tooltip -->
+                    <!-- Tombol VARK Vertikal -->
                     <div class="col-2 col-md-1">
                         <div class="d-flex flex-column gap-3">
                             <?php
@@ -69,19 +69,87 @@
                         </div>
                     </div>
 
-                    <!-- Konten Materi (kanan) - menyesuaikan sisa kolom -->
+                    <!-- Konten Materi -->
                     <div class="col-10 col-md-11">
                         <h5 class="fw-bold"><?= esc($konten['judul'] ?? 'Materi') ?></h5>
                         <div class="mt-2">
-                            <?= $konten['isi_konten'] ?? '<p class="text-muted">Belum ada konten untuk kombinasi ini.</p>' ?>
+                            <?php
+                            // Ambil data dari struktur baru
+                            $tipe = $konten['tipe_tampilan'] ?? 'teks';
+                            $gambar = $konten['gambar_url'] ?? '';
+                            $teks = $konten['teks_konten'] ?? '';
+                            $audio = $konten['audio_url'] ?? '';
+                            $video = $konten['video_url'] ?? '';
+                            $interaktif = $konten['interaktif_url'] ?? '';
+                            $url_media = $konten['url_media'] ?? ''; // fallback
+
+                            switch ($tipe) {
+                                case 'hybrid':
+                                    // Gambar + teks
+                                    if (!empty($gambar)) {
+                                        echo '<img src="' . base_url($gambar) . '" class="img-fluid rounded-3 mb-3" alt="' . esc($konten['judul']) . '" style="max-height: 400px; width: auto;">';
+                                    }
+                                    if (!empty($teks)) {
+                                        echo '<p class="text-muted">' . nl2br(esc($teks)) . '</p>';
+                                    }
+                                    break;
+                                case 'audio':
+                                    // Audio player + transkrip
+                                    if (!empty($audio)) {
+                                        echo '<audio controls class="w-100 mb-3">
+                                                <source src="' . base_url($audio) . '" type="audio/mpeg">
+                                                Browser Anda tidak mendukung audio.
+                                              </audio>';
+                                    }
+                                    if (!empty($teks)) {
+                                        echo '<p class="text-muted">' . nl2br(esc($teks)) . '</p>';
+                                    }
+                                    break;
+                                case 'video':
+                                    // Video player + deskripsi
+                                    if (!empty($video)) {
+                                        echo '<video controls class="w-100 mb-3" style="max-height: 500px; width: auto;">
+                                                <source src="' . base_url($video) . '" type="video/mp4">
+                                                Browser Anda tidak mendukung video.
+                                              </video>';
+                                    }
+                                    if (!empty($teks)) {
+                                        echo '<p class="text-muted">' . nl2br(esc($teks)) . '</p>';
+                                    }
+                                    break;
+                                case 'interaktif':
+                                    // Interaktif (iframe atau link)
+                                    if (!empty($interaktif)) {
+                                        $ext = pathinfo($interaktif, PATHINFO_EXTENSION);
+                                        if (in_array($ext, ['html', 'htm', 'php'])) {
+                                            echo '<iframe src="' . base_url($interaktif) . '" class="w-100" style="height: 550px; border: 1px solid #dee2e6; border-radius: 0.5rem;"></iframe>';
+                                        } else {
+                                            echo '<a href="' . base_url($interaktif) . '" target="_blank" class="btn btn-outline-primary">Buka Media Interaktif</a>';
+                                        }
+                                    }
+                                    if (!empty($teks)) {
+                                        echo '<p class="text-muted mt-2">' . nl2br(esc($teks)) . '</p>';
+                                    }
+                                    break;
+                                default: // teks
+                                    if (!empty($teks)) {
+                                        echo '<p class="text-muted">' . nl2br(esc($teks)) . '</p>';
+                                    } else {
+                                        echo '<p class="text-muted">Belum ada konten untuk kombinasi ini.</p>';
+                                    }
+                                    break;
+                            }
+
+                            // Fallback jika masih ada url_media dan tidak ada media lain yang tampil
+                            if (!empty($url_media) && empty($gambar) && empty($audio) && empty($video) && empty($interaktif)) {
+                                echo '<div class="mt-3">
+                                        <a href="' . base_url($url_media) . '" target="_blank" class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-external-link-alt me-1"></i> Lihat Media Pembelajaran
+                                        </a>
+                                      </div>';
+                            }
+                            ?>
                         </div>
-                        <?php if (!empty($konten['url_media'])): ?>
-                            <div class="mt-3">
-                                <a href="<?= base_url($konten['url_media']) ?>" target="_blank" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-external-link-alt me-1"></i> Lihat Media Pembelajaran
-                                </a>
-                            </div>
-                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -98,11 +166,11 @@
         </div>
     </div>
 
-    <!-- KOLOM KANAN: PANEL INTERAKSI (LEBIH SEMPIT) -->
+    <!-- KOLOM KANAN: PANEL INTERAKSI -->
     <div class="col-lg-3">
         <div class="card card-shadow">
             <div class="card-body p-4">
-                <!-- Header Sistem Pembelajaran Berdiferensiasi dengan Logo -->
+                <!-- Header Sistem Pembelajaran Berdiferensiasi -->
                 <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
                     <div class="d-flex align-items-center gap-2">
                         <span class="fw-bold" style="font-size: 0.9rem; letter-spacing: 0.5px;">
@@ -147,12 +215,11 @@
     </div>
 </div>
 
-<!-- Pastikan Bootstrap JS dan Popper.js dimuat untuk tooltip -->
+<!-- Tooltip Bootstrap -->
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Aktifkan semua tooltip di halaman
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
         tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
