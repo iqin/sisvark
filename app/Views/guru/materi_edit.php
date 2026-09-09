@@ -14,7 +14,11 @@
                     </div>
                 <?php endif; ?>
 
-                <form action="<?= base_url('guru/materi/update/' . $konten['id']) ?>" method="post">
+                <?php if (session()->getFlashdata('upload_error')): ?>
+                    <div class="alert alert-danger"><?= session()->getFlashdata('upload_error') ?></div>
+                <?php endif; ?>
+
+                <form action="<?= base_url('guru/materi/update/' . $konten['id']) ?>" method="post" enctype="multipart/form-data">
                     <?= csrf_field() ?>
 
                     <!-- =========================================================== -->
@@ -98,13 +102,27 @@
                     <!-- FIELD-FIELD KONTEN (dengan display:none default) -->
                     <!-- =========================================================== -->
                     
-                    <!-- URL GAMBAR -->
+                    <!-- GAMBAR: Upload + URL -->
                     <div class="mb-3" id="gambar_group" style="display:none;">
-                        <label class="form-label fw-bold">URL Gambar</label>
-                        <input type="text" name="gambar_url" class="form-control" 
-                               value="<?= old('gambar_url', $konten['gambar_url'] ?? '') ?>" 
-                               placeholder="/assets/images/modulX/nama_gambar.png">
-                        <small class="text-muted">Path ke file gambar (relatif terhadap root proyek).</small>
+                        <label class="form-label fw-bold">Upload Gambar</label>
+                        <input type="file" name="gambar_file" class="form-control" accept="image/*">
+                        <small class="text-muted">Upload file gambar (jpg, png, gif, svg). Maks 2MB.</small>
+                        
+                        <?php if (!empty($konten['gambar_url'])): ?>
+                            <div class="mt-2">
+                                <img src="<?= base_url($konten['gambar_url']) ?>" alt="Preview" style="max-height: 150px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                                <br>
+                                <span class="text-muted small">Gambar saat ini: <?= esc($konten['gambar_url']) ?></span>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="mt-2">
+                            <label class="form-label fw-bold">URL Gambar (alternatif)</label>
+                            <input type="text" name="gambar_url" class="form-control" 
+                                   value="<?= old('gambar_url', $konten['gambar_url'] ?? '') ?>" 
+                                   placeholder="https://example.com/gambar.png atau /assets/images/...">
+                            <small class="text-muted">Jika upload file, URL ini akan diabaikan.</small>
+                        </div>
                     </div>
 
                     <!-- TEKS KONTEN (selalu tampil) -->
@@ -114,25 +132,64 @@
                         <small class="text-muted">Teks deskriptif, transkrip, atau penjelasan. Bisa berisi HTML.</small>
                     </div>
 
-                    <!-- URL AUDIO -->
+                    <!-- AUDIO: Upload + URL -->
                     <div class="mb-3" id="audio_group" style="display:none;">
-                        <label class="form-label fw-bold">URL Audio</label>
-                        <input type="text" name="audio_url" class="form-control" 
-                               value="<?= old('audio_url', $konten['audio_url'] ?? '') ?>" 
-                               placeholder="/assets/audio/modulX/nama_audio.mp3">
-                        <small class="text-muted">Path ke file audio (mp3, wav, dll).</small>
+                        <label class="form-label fw-bold">Upload Audio (MP3)</label>
+                        <input type="file" name="audio_file" class="form-control" accept="audio/*">
+                        <small class="text-muted">Upload file audio (mp3, wav, ogg). Maks 5MB.</small>
+
+                        <?php if (!empty($konten['audio_url'])): ?>
+                            <div class="mt-2">
+                                <audio controls style="max-width: 100%;">
+                                    <source src="<?= base_url($konten['audio_url']) ?>" type="audio/mpeg">
+                                    Browser Anda tidak mendukung audio.
+                                </audio>
+                                <br>
+                                <span class="text-muted small">Audio saat ini: <?= esc($konten['audio_url']) ?></span>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="mt-2">
+                            <label class="form-label fw-bold">URL Audio (alternatif / embed)</label>
+                            <input type="text" name="audio_url" class="form-control" 
+                                   value="<?= old('audio_url', $konten['audio_url'] ?? '') ?>" 
+                                   placeholder="https://example.com/audio.mp3 atau embed YouTube/SoundCloud">
+                            <small class="text-muted">Jika upload file, URL ini akan diabaikan. Bisa juga untuk link embed (YouTube, SoundCloud).</small>
+                        </div>
                     </div>
 
-                    <!-- URL VIDEO -->
+                    <!-- VIDEO: Hanya URL (tidak ada upload) -->
                     <div class="mb-3" id="video_group" style="display:none;">
                         <label class="form-label fw-bold">URL Video</label>
                         <input type="text" name="video_url" class="form-control" 
                                value="<?= old('video_url', $konten['video_url'] ?? '') ?>" 
-                               placeholder="/assets/video/modulX/nama_video.mp4">
-                        <small class="text-muted">Path ke file video (mp4, webm, dll).</small>
+                               placeholder="https://www.youtube.com/embed/... atau /assets/video/...">
+                        <small class="text-muted">Masukkan link video (YouTube embed, Vimeo, atau file video lokal).</small>
+
+                        <?php if (!empty($konten['video_url'])): ?>
+                            <div class="mt-2">
+                                <?php 
+                                    $video_url = $konten['video_url'];
+                                    // Deteksi jika link YouTube
+                                    if (strpos($video_url, 'youtube.com/embed') !== false || strpos($video_url, 'youtu.be') !== false) {
+                                        // Tampilkan embed jika memang embed
+                                        echo '<div class="ratio ratio-16x9">';
+                                        echo '<iframe src="' . esc($video_url) . '" allowfullscreen></iframe>';
+                                        echo '</div>';
+                                    } else {
+                                        echo '<video controls style="max-width: 100%; max-height: 300px;">';
+                                        echo '<source src="' . base_url($video_url) . '" type="video/mp4">';
+                                        echo 'Browser Anda tidak mendukung video.';
+                                        echo '</video>';
+                                    }
+                                ?>
+                                <br>
+                                <span class="text-muted small">Video saat ini: <?= esc($video_url) ?></span>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
-                    <!-- URL INTERAKTIF -->
+                    <!-- INTERAKTIF: Hanya URL -->
                     <div class="mb-3" id="interaktif_group" style="display:none;">
                         <label class="form-label fw-bold">URL Interaktif</label>
                         <input type="text" name="interaktif_url" class="form-control" 
@@ -166,7 +223,6 @@
         function toggleFields() {
             var tipe = document.getElementById('tipe_tampilan').value;
             
-            // Ambil semua grup field
             var gambarGroup = document.getElementById('gambar_group');
             var audioGroup = document.getElementById('audio_group');
             var videoGroup = document.getElementById('video_group');
@@ -178,7 +234,7 @@
             if (videoGroup) videoGroup.style.display = 'none';
             if (interaktifGroup) interaktifGroup.style.display = 'none';
 
-            // Tampilkan yang sesuai dengan tipe
+            // Tampilkan sesuai tipe
             switch(tipe) {
                 case 'gambar':
                     if (gambarGroup) gambarGroup.style.display = 'block';
@@ -194,19 +250,14 @@
                     break;
                 case 'hybrid':
                     if (gambarGroup) gambarGroup.style.display = 'block';
-                    // hybrid juga menampilkan teks (sudah default)
                     break;
                 case 'teks':
                 default:
-                    // Hanya teks yang tampil (semua grup sudah tersembunyi)
                     break;
             }
         }
 
-        // Jalankan saat halaman dimuat
         toggleFields();
-
-        // Jalankan saat pilihan tipe tampilan berubah
         document.getElementById('tipe_tampilan').addEventListener('change', toggleFields);
     });
 </script>

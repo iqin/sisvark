@@ -4,10 +4,9 @@
     <div class="col-12 col-lg-10 col-xl-8">
         <div class="card card-shadow">
             <div class="card-body p-3 p-md-4 p-lg-5">
-                <!-- Header -->
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                     <h4 class="fw-bold mb-0 fs-5 fs-md-4">
-                        <i class="fas fa-flask text-warning me-2"></i>Soal Pretest Modul <?= $module_id ?>
+                        <i class="fas fa-check-circle text-success me-2"></i>Post Test Modul <?= $module_id ?>
                     </h4>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="badge bg-primary fs-6" id="progress-indicator">1 / <?= count($questions) ?></span>
@@ -15,11 +14,7 @@
                     </div>
                 </div>
 
-                <?php if (session()->getFlashdata('error')): ?>
-                    <div class="alert alert-danger"><?= session()->getFlashdata('error') ?></div>
-                <?php endif; ?>
-
-                <form action="<?= base_url('zpd/submit/' . $module_id) ?>" method="post" id="zpdForm">
+                <form action="<?= base_url('posttest/submit/' . $module_id) ?>" method="post" id="posttestForm">
                     <?= csrf_field() ?>
                     <input type="hidden" name="total_questions" value="<?= count($questions) ?>">
 
@@ -31,7 +26,6 @@
                         $opsi = ['A' => $q['opsi_a'], 'B' => $q['opsi_b'], 'C' => $q['opsi_c'], 'D' => $q['opsi_d']];
                     ?>
                         <div class="soal-item" id="soal-<?= $no ?>" style="<?= ($no > 1) ? 'display:none;' : '' ?>">
-                            <!-- Soal -->
                             <div class="card border-0 bg-light mb-3 shadow-sm">
                                 <div class="card-body p-3 p-md-4">
                                     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
@@ -63,7 +57,6 @@
                                 </div>
                             </div>
 
-                            <!-- Navigasi -->
                             <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
                                 <button type="button" class="btn btn-secondary btn-prev px-4 py-2" <?= ($no == 1) ? 'disabled' : '' ?>>
                                     <i class="fas fa-arrow-left me-2"></i>Kembali
@@ -73,7 +66,7 @@
                                         Next <i class="fas fa-arrow-right ms-2"></i>
                                     </button>
                                 <?php else: ?>
-                                    <button type="submit" class="btn btn-warning text-white px-4 py-2">
+                                    <button type="submit" class="btn btn-success px-4 py-2">
                                         <i class="fas fa-check-circle me-2"></i> Submit
                                     </button>
                                 <?php endif; ?>
@@ -87,13 +80,8 @@
 </div>
 
 <style>
-.fade-transition {
-    animation: fadeIn 0.25s ease-in-out;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+.fade-transition { animation: fadeIn 0.25s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .option-item {
     transition: all 0.2s ease;
     cursor: pointer;
@@ -114,9 +102,6 @@
     background-color: #4e73df;
     border-color: #4e73df;
 }
-.option-item .form-check-input:focus {
-    box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
-}
 @media (max-width: 576px) {
     .card-body { padding: 1rem !important; }
     .fs-6 { font-size: 0.9rem !important; }
@@ -132,10 +117,9 @@
 (function() {
     'use strict';
 
-    // --- TIMER ---
     let remaining = <?= $remaining ?? 600 ?>;
     const timerEl = document.getElementById('timer');
-    const form = document.getElementById('zpdForm');
+    const form = document.getElementById('posttestForm');
 
     function formatTime(sec) {
         const m = Math.floor(sec / 60);
@@ -158,39 +142,31 @@
     updateTimer();
     const timerInterval = setInterval(updateTimer, 1000);
 
-    // --- NAVIGASI ---
     const totalSoal = <?= count($questions) ?>;
     let currentSoal = 1;
     const progressIndicator = document.getElementById('progress-indicator');
     const soalItems = document.querySelectorAll('.soal-item');
 
     function showSoal(index) {
-        // Sembunyikan semua
+        if (index < 1 || index > totalSoal) return;
         soalItems.forEach(el => el.style.display = 'none');
-        // Tampilkan yang dipilih
         const target = document.getElementById('soal-' + index);
         if (!target) return;
         target.style.display = 'block';
         target.classList.remove('fade-transition');
-        void target.offsetWidth; // trigger reflow
+        void target.offsetWidth;
         target.classList.add('fade-transition');
-
-        // Update progress
         progressIndicator.textContent = index + ' / ' + totalSoal;
 
-        // Update required radio
         document.querySelectorAll('.soal-item input[type="radio"]').forEach(inp => inp.removeAttribute('required'));
         const activeRadios = target.querySelectorAll('input[type="radio"]');
         activeRadios.forEach(inp => inp.setAttribute('required', 'required'));
     }
 
-    // Event listener untuk tombol Next
     document.querySelectorAll('.btn-next').forEach(btn => {
         btn.addEventListener('click', function(e) {
             const parentSoal = this.closest('.soal-item');
             if (!parentSoal) return;
-
-            // Cek apakah jawaban sudah dipilih
             const radios = parentSoal.querySelectorAll('input[type="radio"]');
             let answered = false;
             radios.forEach(r => { if (r.checked) answered = true; });
@@ -198,8 +174,6 @@
                 alert('Silakan pilih jawaban terlebih dahulu.');
                 return;
             }
-
-            // Ambil nomor soal berikutnya dari data attribute
             const next = parseInt(this.dataset.next);
             if (next && next <= totalSoal) {
                 currentSoal = next;
@@ -208,12 +182,10 @@
         });
     });
 
-    // Event listener untuk tombol Prev
     document.querySelectorAll('.btn-prev').forEach(btn => {
         btn.addEventListener('click', function(e) {
             const parentSoal = this.closest('.soal-item');
             if (!parentSoal) return;
-
             const id = parseInt(parentSoal.id.split('-')[1]);
             if (id > 1) {
                 currentSoal = id - 1;
@@ -222,14 +194,11 @@
         });
     });
 
-    // Hentikan timer saat form disubmit
     form.addEventListener('submit', function() {
         clearInterval(timerInterval);
     });
 
-    // Inisialisasi tampilan awal
     showSoal(1);
-
 })();
 </script>
 <?= $this->endSection() ?>

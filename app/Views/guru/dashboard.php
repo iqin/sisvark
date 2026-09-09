@@ -8,25 +8,44 @@
             <p class="text-muted">Dashboard monitoring siswa.</p>
             <hr>
             <div class="row mt-4">
-                <div class="col-md-4">
-                    <div class="card border-primary p-3">
+                <!-- Total Siswa -->
+                <div class="col-md-3">
+                    <div class="card border-primary p-3 h-100 d-flex flex-column">
                         <h5><i class="fas fa-users text-primary"></i> Total Siswa</h5>
                         <h3><?= $totalSiswa ?? 0 ?></h3>
                         <small class="text-muted">Seluruh siswa terdaftar</small>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card border-success p-3">
+                <!-- Tuntas VARK -->
+                <div class="col-md-3">
+                    <div class="card border-success p-3 h-100 d-flex flex-column">
                         <h5><i class="fas fa-check-circle text-success"></i> Tuntas VARK</h5>
                         <h3><?= $tuntasVark ?? 0 ?></h3>
                         <small class="text-muted">Sudah mengerjakan tes VARK</small>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card border-danger p-3">
+                <!-- Perlu Intervensi -->
+                <div class="col-md-3">
+                    <div class="card border-danger p-3 h-100 d-flex flex-column">
                         <h5><i class="fas fa-exclamation-triangle text-danger"></i> Perlu Intervensi</h5>
                         <h3><?= $perluIntervensi ?? 0 ?></h3>
                         <small class="text-muted">Hasil Multimodal (gaya belajar campuran)</small>
+                    </div>
+                </div>
+                <!-- Pesan Siswa -->
+                <div class="col-md-3">
+                    <div class="card border-warning p-3 h-100 d-flex flex-column">
+                        <h5><i class="fas fa-envelope text-warning"></i> Pesan Siswa</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <h3 class="mb-0"><?= $pesanBaru ?? 0 ?></h3>
+                            <?php if (($pesanBaru ?? 0) > 0): ?>
+                                <span class="badge bg-danger rounded-pill">Baru</span>
+                            <?php endif; ?>
+                        </div>
+                        <small class="text-muted">Pesan belum dibaca</small>
+                        <a href="<?= base_url('guru/pesan') ?>" class="btn btn-sm btn-warning mt-2">
+                            <i class="fas fa-eye me-1"></i> Lihat
+                        </a>
                     </div>
                 </div>
             </div>

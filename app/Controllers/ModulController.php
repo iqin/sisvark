@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\VarkResultModel;
 use App\Models\ZpdResultModel;
+use App\Models\PostTestModel;
 
 class ModulController extends BaseController
 {
@@ -37,6 +38,19 @@ class ModulController extends BaseController
                 'score' => $zpd ? $zpd['total_nilai'] : null,
             ];
         }
+        // =============================================================
+        // AMBIL STATUS POST TEST UNTUK 3 MODUL
+        // =============================================================
+        $postTestModel = new \App\Models\PostTestModel();
+        $postTestStatus = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $postTest = $postTestModel->where(['pengguna_id' => $userId, 'modul_id' => $i])->first();
+            $postTestStatus[$i] = [
+                'done' => ($postTest !== null),
+                'status' => $postTest ? $postTest['status'] : null,
+                'score' => $postTest ? $postTest['skor'] : null,
+            ];
+        }
 
         // =============================================================
         // KIRIM DATA KE VIEW
@@ -44,8 +58,9 @@ class ModulController extends BaseController
         $data = [
             'title'       => 'Pilih Modul',
             'vark_done'   => ($varkResult !== null),
-            'vark_result' => $varkResult, // <-- PASTIKAN INI TERKIRIM
+            'vark_result' => $varkResult,
             'zpd_status'  => $zpdStatus,
+            'post_test_status' => $postTestStatus,
         ];
 
         // =============================================================

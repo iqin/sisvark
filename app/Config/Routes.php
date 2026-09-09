@@ -71,3 +71,20 @@ $routes->get('zpd/start/(:num)', 'ZpdController::start/$1');
 $routes->get('zpd/soal/(:num)', 'ZpdController::soal/$1');
 $routes->post('zpd/submit/(:num)', 'ZpdController::submit/$1');
 $routes->get('zpd/hasil/(:num)', 'ZpdController::hasil/$1');
+
+// ========== POST TEST ==========
+$routes->get('posttest/intro/(:num)', 'PostTestController::intro/$1');
+$routes->get('posttest/start/(:num)', 'PostTestController::start/$1');
+$routes->get('posttest/soal/(:num)', 'PostTestController::soal/$1');
+$routes->post('posttest/submit/(:num)', 'PostTestController::submit/$1');
+$routes->get('posttest/hasil/(:num)', 'PostTestController::hasil/$1');
+
+// ========== CHAT ==========
+$routes->post('chat/send', 'ChatController::send');
+$routes->get('chat/history', 'ChatController::history');
+$routes->get('chat/history/json', 'ChatController::historyJson');
+$routes->get('guru/pesan', 'ChatController::index');
+$routes->get('chat/unread', 'ChatController::unreadCount');
+$routes->post('chat/reply', 'ChatController::reply');
+$routes->get('chat/history/siswa/(:num)', 'ChatController::historySiswa/$1');
+$routes->get('chat/history/json/guru', 'ChatController::historyJsonGuru');

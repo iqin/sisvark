@@ -24,20 +24,38 @@ class MateriController extends BaseController
             return redirect()->to('/vark')->with('error', 'Silakan kerjakan tes VARK terlebih dahulu!');
         }
 
-        // 2. Cek ZPD modul ini
+        // =============================================================
+        // 2. Cek ZPD Modul 1 (sebagai acuan level untuk semua modul)
+        // =============================================================
         $zpdModel = new ZpdResultModel();
-        $zpd = $zpdModel->where(['pengguna_id' => $userId, 'modul_id' => $moduleId])->first();
-        if (!$zpd) {
-            return redirect()->to('/zpd/test/' . $moduleId)->with('error', 'Silakan kerjakan tes ZPD modul ini terlebih dahulu!');
+        $zpdModul1 = $zpdModel->where(['pengguna_id' => $userId, 'modul_id' => 1])->first();
+        if (!$zpdModul1) {
+            return redirect()->to('/zpd/test/1')->with('error', 'Silakan kerjakan tes ZPD Modul 1 terlebih dahulu!');
         }
 
-        // 3. Tentukan konten adaptif berdasarkan VARK + ZPD
-        //$varkType = $vark['tipe_hasil']; // V, A, R, K, M
-        // 3. Tentukan konten adaptif berdasarkan VARK + ZPD
-        $varkType = $this->request->getGet('vark') ?? $vark['tipe_hasil'];
-        $zpdLevel = $zpd['level_zpd'];   // novice, apprentice, master
+        // =============================================================
+        // 3. Cek apakah modul ini sudah bisa diakses
+        //    Modul 2: hanya jika Modul 1 sudah selesai
+        //    Modul 3: hanya jika Modul 2 sudah selesai
+        // =============================================================
+        if ($moduleId > 1) {
+            $prevModuleId = $moduleId - 1;
+            $prevZpd = $zpdModel->where(['pengguna_id' => $userId, 'modul_id' => $prevModuleId])->first();
+            if (!$prevZpd) {
+                return redirect()->to('/siswa/modul')->with('error', 'Selesaikan modul sebelumnya terlebih dahulu!');
+            }
+        }
 
-        // 4. Ambil konten dari database
+        // =============================================================
+        // 4. Tentukan konten adaptif berdasarkan VARK + ZPD (dari Modul 1)
+        // =============================================================
+        $varkType = $this->request->getGet('vark') ?? $vark['tipe_hasil'];
+        $zpdLevel = $zpdModul1['level_zpd']; // Level ZPD dari Modul 1
+
+        // Cek apakah mode "show all" aktif (dari parameter URL)
+        $showAll = $this->request->getGet('show') === 'all';
+
+        // 5. Ambil konten dari database
         $materiModel = new MateriAdaptifModel();
         $konten = $materiModel->where([
             'modul_id' => $moduleId,
@@ -64,7 +82,7 @@ class MateriController extends BaseController
             return redirect()->to('/siswa/modul')->with('error', 'Konten materi belum tersedia untuk modul ini.');
         }
 
-        // 5. Siapkan data scaffolding berdasarkan level ZPD
+        // 6. Siapkan data scaffolding berdasarkan level ZPD
         $scaffolding = [
             'novice' => [
                 'label' => 'High Scaffolding (Bantuan Penuh)',
@@ -90,7 +108,8 @@ class MateriController extends BaseController
             'zpd_level' => $zpdLevel,
             'module_id' => $moduleId,
             'scaffolding' => $scaffolding[$zpdLevel] ?? $scaffolding['novice'],
-            'vark_label' => $this->getVarkLabel($varkType)
+            'vark_label' => $this->getVarkLabel($varkType),
+            'show_all' => $showAll,
         ];
 
         return view('siswa/materi_adaptif', $data);

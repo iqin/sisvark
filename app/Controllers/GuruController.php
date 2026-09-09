@@ -32,11 +32,16 @@ class GuruController extends BaseController
         $result3 = $query3->getRow();
         $perluIntervensi = $result3 ? $result3->total : 0;
 
+        // === QUERY PESAN BARU ===
+        $chatModel = new \App\Models\PesanModel();
+        $pesanBaru = $chatModel->countUnread(session()->get('user_id'));
+
         $data = [
             'title'          => 'Dashboard Guru',
             'totalSiswa'     => $totalSiswa,
             'tuntasVark'     => $tuntasVark,
             'perluIntervensi'=> $perluIntervensi,
+            'pesanBaru'      => $pesanBaru,
         ];
 
         return view('guru/dashboard', $data);
@@ -214,7 +219,6 @@ class GuruController extends BaseController
 
         return view('guru/vark_hasil', $data);
     }
-
     // ======== KELOLA MATERI ADAPTIF ========
     public function materiIndex()
     {
@@ -259,7 +263,7 @@ class GuruController extends BaseController
             return redirect()->to('/guru/materi')->with('error', 'Konten tidak ditemukan!');
         }
 
-        // Validasi field yang dapat diubah
+        // Validasi field
         $rules = [
             'judul'          => 'required|max_length[255]',
             'tipe_tampilan'  => 'required|in_list[teks,gambar,audio,video,interaktif,hybrid]',
@@ -270,24 +274,81 @@ class GuruController extends BaseController
             'interaktif_url' => 'permit_empty|max_length[255]',
         ];
 
+        // Validasi file gambar (opsional)
+        $gambarFile = $this->request->getFile('gambar_file');
+        if ($gambarFile && $gambarFile->isValid() && !$gambarFile->hasMoved()) {
+            $rules['gambar_file'] = 'max_size[gambar_file,2048]|is_image[gambar_file]';
+        }
+
+        // Validasi file audio (opsional)
+        $audioFile = $this->request->getFile('audio_file');
+        if ($audioFile && $audioFile->isValid() && !$audioFile->hasMoved()) {
+            $rules['audio_file'] = 'max_size[audio_file,5120]|ext_in[audio_file,mp3,wav,ogg]';
+        }
+
         if (!$this->validate($rules)) {
             return redirect()->to('/guru/materi/edit/' . $id)
                             ->withInput()
                             ->with('errors', $this->validator->getErrors());
         }
 
-        // Siapkan data update (hanya field yang diizinkan)
+        // === PROSES UPLOAD GAMBAR ===
+        $gambarPath = $this->request->getPost('gambar_url');
+        if ($gambarFile && $gambarFile->isValid() && !$gambarFile->hasMoved()) {
+            $modulId = $existing['modul_id'];
+            $uploadPath = FCPATH . 'assets/images/modul' . $modulId . '/';
+            
+            // Buat folder jika belum ada
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+
+            // Generate nama file unik
+            $newName = $gambarFile->getRandomName();
+            if ($gambarFile->move($uploadPath, $newName)) {
+                $gambarPath = 'assets/images/modul' . $modulId . '/' . $newName;
+            } else {
+                return redirect()->to('/guru/materi/edit/' . $id)
+                                ->with('upload_error', 'Gagal upload gambar!');
+            }
+        }
+
+        // === PROSES UPLOAD AUDIO ===
+        $audioPath = $this->request->getPost('audio_url');
+        if ($audioFile && $audioFile->isValid() && !$audioFile->hasMoved()) {
+            $modulId = $existing['modul_id'];
+            $uploadPath = FCPATH . 'assets/audio/modul' . $modulId . '/';
+            
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+
+            $newName = $audioFile->getRandomName();
+            if ($audioFile->move($uploadPath, $newName)) {
+                $audioPath = 'assets/audio/modul' . $modulId . '/' . $newName;
+            } else {
+                return redirect()->to('/guru/materi/edit/' . $id)
+                                ->with('upload_error', 'Gagal upload audio!');
+            }
+        }
+
+        // === Siapkan data update ===
         $updateData = [
             'judul'          => $this->request->getPost('judul'),
             'tipe_tampilan'  => $this->request->getPost('tipe_tampilan'),
-            'gambar_url'     => $this->request->getPost('gambar_url'),
+            'gambar_url'     => $gambarPath,
             'teks_konten'    => $this->request->getPost('teks_konten'),
-            'audio_url'      => $this->request->getPost('audio_url'),
+            'audio_url'      => $audioPath,
             'video_url'      => $this->request->getPost('video_url'),
             'interaktif_url' => $this->request->getPost('interaktif_url'),
         ];
 
-        // Field kode_konten, modul_id, tipe_vark, level_zpd tidak diubah (diabaikan)
+        // Hapus field kosong agar tidak menimpa data lama jika kosong
+        foreach ($updateData as $key => $value) {
+            if ($value === '' && !in_array($key, ['judul', 'tipe_tampilan'])) {
+                unset($updateData[$key]);
+            }
+        }
 
         $model->update($id, $updateData);
 
