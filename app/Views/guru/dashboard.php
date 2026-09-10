@@ -7,7 +7,9 @@
             <h2>👨‍🏫 Halo, Guru <?= session()->get('name') ?></h2>
             <p class="text-muted">Dashboard monitoring siswa.</p>
             <hr>
-            <div class="row mt-4">
+            
+            <!-- PERBAIKAN: Tambahkan g-3 pada row ini agar ada jarak antar card di mobile -->
+            <div class="row mt-4 g-3">
                 <!-- Total Siswa -->
                 <div class="col-md-3">
                     <div class="card border-primary p-3 h-100 d-flex flex-column">
