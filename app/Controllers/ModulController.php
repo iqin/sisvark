@@ -49,6 +49,9 @@ class ModulController extends BaseController
                 'done' => ($postTest !== null),
                 'status' => $postTest ? $postTest['status'] : null,
                 'score' => $postTest ? $postTest['skor'] : null,
+                'lulus'  => ($postTest && $postTest['status'] === 'lulus') ? true : false,
+                'level_awal'  => $postTest ? $postTest['level_zpd_awal'] : null,
+                'level_akhir' => $postTest ? $postTest['level_zpd_akhir'] : null,
             ];
         }
 

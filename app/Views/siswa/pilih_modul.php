@@ -80,51 +80,75 @@
                         $post2Done = $post_test_status[2]['done'] ?? false;
                         $post3Done = $post_test_status[3]['done'] ?? false;
 
-                        // HAPUS <?php DI SINI, LANGSUNG TULIS for
                         for ($i = 1; $i <= 3; $i++): 
                             $color = $modulColors[$i];
                             $bgColor = $modulBgColors[$i];
                             $imgPath = base_url('assets/images/modul_' . $i . '.png');
                             
                             // =============================================================
-                            // TENTUKAN STATUS MODUL BERDASARKAN ZPD DAN POST TEST
+                            // AMBIL DATA ZPD
                             // =============================================================
                             $zpdDone = $zpd_status[$i]['done'] ?? false;
+                            $zpdLevel = $zpd_status[$i]['level'] ?? 'novice';
+                            $zpdScore = $zpd_status[$i]['score'] ?? 0;
+                            
+                            // =============================================================
+                            // AMBIL DATA POST TEST
+                            // =============================================================
                             $postDone = $post_test_status[$i]['done'] ?? false;
+                            $postLulus = $post_test_status[$i]['lulus'] ?? false;
+                            $postScore = $post_test_status[$i]['score'] ?? 0;
+                            $postLevelAkhir = $post_test_status[$i]['level_akhir'] ?? null;
                             
-                            // Modul dianggap selesai jika sudah mengerjakan post test
-                            $isCompleted = $postDone;
+                            // =============================================================
+                            // AMBIL LEVEL DARI MODUL SEBELUMNYA (UNTUK MODUL 2 & 3)
+                            // =============================================================
+                            if ($i > 1) {
+                                $prevData = $post_test_status[$i-1];
+                                $prevLevel = $prevData['level_akhir'] ?? $zpd_status[$i-1]['level'] ?? 'novice';
+                            } else {
+                                $prevLevel = 'novice';
+                            }
                             
-                            // Khusus Modul 1: Modul terkunci jika ZPD belum ada
-                            // Modul 2 dan 3: Modul tidak terkunci karena ZPD tidak diperlukan (cukup modul sebelumnya selesai)
+                            // =============================================================
+                            // TENTUKAN STATUS MODUL
+                            // =============================================================
+                            $isCompleted = $postLulus; // Selesai hanya jika lulus
+                            $isRemedial = $postDone && !$postLulus; // Remedial jika sudah post test tapi tidak lulus
+                            
+                            // LOGIKA TERKUNCI
                             if ($i == 1) {
                                 $isLocked = !$zpdDone;
                             } else {
-                                // Modul 2 dan 3: tidak terkunci berdasarkan ZPD, hanya berdasarkan modul sebelumnya
-                                $isLocked = false;
+                                $prevIndex = $i - 1;
+                                $prevLulus = $post_test_status[$prevIndex]['lulus'] ?? false;
+                                $isLocked = !$prevLulus;
                             }
                             
-                            // Cek apakah modul sebelumnya sudah selesai (post test)
-                            if ($i == 1) {
-                                $prevDone = true;
-                            } elseif ($i == 2) {
-                                $prevDone = $post1Done;
-                            } else {
-                                $prevDone = $post2Done;
-                            }
+                            $canAccess = !$isLocked && !$isCompleted;
                             
-                            // Modul bisa diakses jika: tidak terkunci, belum selesai, dan modul sebelumnya sudah selesai
-                            $canAccess = !$isLocked && !$isCompleted && $prevDone;
-                            
-                            // Tentukan skor yang ditampilkan
-                            if ($i == 1) {
-                                $displayScore = $skorModul1;
+                            // =============================================================
+                            // TENTUKAN LEVEL DAN SKOR YANG DITAMPILKAN
+                            // =============================================================
+                            if ($isCompleted || $isRemedial) {
+                                // Modul sudah ada post test: gunakan level_akhir dari post test
+                                $displayLevel = $postLevelAkhir ?: $zpdLevel;
+                                $displayScore = $postScore;
                             } else {
-                                $displayScore = $post_test_status[$i]['score'] ?? 0;
+                                // Modul belum dikerjakan
+                                if ($i == 1) {
+                                    // Modul 1: gunakan data ZPD
+                                    $displayLevel = $zpdLevel;
+                                    $displayScore = $zpdScore;
+                                } else {
+                                    // Modul 2 & 3: gunakan level dari modul sebelumnya
+                                    $displayLevel = $prevLevel;
+                                    $displayScore = 0;
+                                }
                             }
                         ?>
                         <div class="col-md-4 mb-3">
-                            <div class="card h-100 border-<?= ($isLocked || $isCompleted) ? 'secondary' : $color ?> shadow-sm hover-card">
+                            <div class="card h-100 border-<?= ($isLocked || $isCompleted || $isRemedial) ? 'secondary' : $color ?> shadow-sm hover-card">
                                 <div class="card-body text-center">
                                     <!-- Gambar Modul -->
                                     <div class="modul-icon-container mb-3">
@@ -132,57 +156,71 @@
                                             alt="Modul <?= $i ?>"
                                             class="modul-icon"
                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <div class="modul-icon-fallback <?= ($isLocked || $isCompleted) ? 'bg-secondary' : $bgColor ?>">
-                                            <i class="fas <?= ($isLocked || $isCompleted) ? 'fa-check' : 'fa-book-open' ?> fa-2x text-white"></i>
+                                        <div class="modul-icon-fallback <?= ($isLocked || $isCompleted) ? 'bg-secondary' : ($isRemedial ? 'bg-danger' : $bgColor) ?>">
+                                            <i class="fas <?= $isLocked ? 'fa-lock' : ($isCompleted ? 'fa-check' : ($isRemedial ? 'fa-exclamation-triangle' : 'fa-book-open')) ?> fa-2x text-white"></i>
                                         </div>
                                     </div>
 
-                                    <h5 class="card-title <?= ($isLocked || $isCompleted) ? 'text-muted' : 'text-' . $color ?>">
+                                    <h5 class="card-title <?= ($isLocked || $isCompleted || $isRemedial) ? 'text-muted' : 'text-' . $color ?>">
                                         Modul <?= $i ?>
                                     </h5>
                                     <p class="card-text small text-muted mb-2"><?= $modulNames[$i] ?></p>
 
-                                    <?php if ($isLocked && $i == 1): ?>
+                                    <?php if ($isRemedial): ?>
                                         <!-- ===================================================== -->
-                                        <!-- MODUL 1: BELUM ZPD -->
+                                        <!-- MODUL REMEDIAL -->
                                         <!-- ===================================================== -->
-                                        <span class="badge bg-secondary mb-2">
-                                            <i class="fas fa-lock me-1"></i> Terkunci
+                                        <span class="badge bg-danger mb-2">
+                                            <i class="fas fa-exclamation-triangle me-1"></i> Remedial
                                         </span>
-                                        <p class="text-muted small mb-2">
-                                            <i class="fas fa-info-circle me-1"></i> 
-                                            Kerjakan tes ZPD untuk membuka modul ini.
-                                        </p>
-                                        <a href="<?= base_url('zpd/test/' . $i) ?>" class="btn btn-outline-warning btn-sm">
-                                            <i class="fas fa-flask me-1"></i> Ikuti Tes ZPD
+                                        <div class="small text-muted mb-2">
+                                            <strong>Level ZPD:</strong> 
+                                            <span class="badge bg-<?= $levelColors[$displayLevel] ?? 'secondary' ?>">
+                                                <?= $levelLabels[$displayLevel] ?? ucfirst($displayLevel) ?>
+                                            </span>
+                                            <br>
+                                            <span class="text-danger">Skor: <strong><?= $displayScore ?></strong> (Tidak Lulus)</span>
+                                        </div>
+                                        <a href="<?= base_url('materi/' . $i) ?>" class="btn btn-danger btn-sm">
+                                            <i class="fas fa-redo me-1"></i> Belajar Ulang
                                         </a>
 
-                                    <?php elseif ($isLocked && $i > 1): ?>
+                                    <?php elseif ($isLocked): ?>
                                         <!-- ===================================================== -->
-                                        <!-- MODUL 2 ATAU 3: TERKUNCI -->
+                                        <!-- MODUL TERKUNCI -->
                                         <!-- ===================================================== -->
                                         <span class="badge bg-secondary mb-2">
                                             <i class="fas fa-lock me-1"></i> Terkunci
                                         </span>
                                         <p class="text-muted small mb-2">
                                             <i class="fas fa-info-circle me-1"></i> 
-                                            Selesaikan modul sebelumnya terlebih dahulu.
+                                            <?php if ($i == 1): ?>
+                                                Kerjakan tes ZPD untuk membuka modul ini.
+                                            <?php else: ?>
+                                                Selesaikan modul sebelumnya terlebih dahulu.
+                                            <?php endif; ?>
                                         </p>
-                                        <button class="btn btn-secondary btn-sm" disabled>
-                                            <i class="fas fa-lock me-1"></i> Terkunci
-                                        </button>
+                                        <?php if ($i == 1): ?>
+                                            <a href="<?= base_url('zpd/test/' . $i) ?>" class="btn btn-outline-warning btn-sm">
+                                                <i class="fas fa-flask me-1"></i> Ikuti Tes ZPD
+                                            </a>
+                                        <?php else: ?>
+                                            <button class="btn btn-secondary btn-sm" disabled>
+                                                <i class="fas fa-lock me-1"></i> Terkunci
+                                            </button>
+                                        <?php endif; ?>
 
                                     <?php elseif ($isCompleted): ?>
                                         <!-- ===================================================== -->
-                                        <!-- MODUL SUDAH SELESAI (POST TEST SUDAH DIKERJAKAN) -->
+                                        <!-- MODUL LULUS (SELESAI) -->
                                         <!-- ===================================================== -->
                                         <span class="badge bg-secondary mb-2">
                                             <i class="fas fa-check me-1"></i> Selesai
                                         </span>
                                         <div class="small text-muted mb-2">
                                             <strong>Level ZPD:</strong> 
-                                            <span class="badge bg-<?= $levelColors[$levelModul1] ?? 'secondary' ?>">
-                                                <?= $levelLabels[$levelModul1] ?? ucfirst($levelModul1) ?>
+                                            <span class="badge bg-<?= $levelColors[$displayLevel] ?? 'secondary' ?>">
+                                                <?= $levelLabels[$displayLevel] ?? ucfirst($displayLevel) ?>
                                             </span>
                                             <br>
                                             <span class="text-muted">Skor: <strong><?= $displayScore ?></strong></span>
@@ -193,31 +231,25 @@
 
                                     <?php elseif ($canAccess): ?>
                                         <!-- ===================================================== -->
-                                        <!-- MODUL TERBUKA (SIAP DIPELAJARI) -->
+                                        <!-- MODUL SIAP DIPELAJARI -->
                                         <!-- ===================================================== -->
                                         <span class="badge bg-success mb-2">
                                             <i class="fas fa-check-circle me-1"></i> Siap Dipelajari
                                         </span>
                                         <div class="small text-muted mb-2">
                                             <strong>Level ZPD:</strong> 
-                                            <span class="badge bg-<?= $levelColors[$levelModul1] ?? 'secondary' ?>">
-                                                <?= $levelLabels[$levelModul1] ?? ucfirst($levelModul1) ?>
+                                            <span class="badge bg-<?= $levelColors[$displayLevel] ?? 'secondary' ?>">
+                                                <?= $levelLabels[$displayLevel] ?? ucfirst($displayLevel) ?>
                                             </span>
                                             <br>
-                                            <?php if ($i == 1): ?>
-                                                <span class="text-muted">Skor: <strong><?= $displayScore ?></strong></span>
-                                            <?php else: ?>
-                                                <span class="text-muted">Skor: <strong>0</strong> (Belum ada post test)</span>
-                                            <?php endif; ?>
+                                            <span class="text-muted">Skor: <strong><?= $displayScore ?></strong></span>
                                         </div>
                                         <a href="<?= base_url('materi/' . $i) ?>" class="btn btn-<?= $color ?> btn-sm text-white">
                                             <i class="fas fa-book me-1"></i> Mulai Belajar
                                         </a>
 
                                     <?php else: ?>
-                                        <!-- ===================================================== -->
-                                        <!-- FALLBACK (TIDAK SEHARUSNYA TERJADI) -->
-                                        <!-- ===================================================== -->
+                                        <!-- FALLBACK -->
                                         <span class="badge bg-secondary mb-2">
                                             <i class="fas fa-question me-1"></i> Unknown
                                         </span>
