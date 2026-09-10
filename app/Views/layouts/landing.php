@@ -13,9 +13,16 @@
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
         }
+        
+        /* Terapkan flexbox hanya untuk layar desktop ke atas */
+        @media (min-width: 992px) {
+            body {
+                display: flex;
+                align-items: center;
+            }
+        }
+
         .card-shadow {
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             border: none;
@@ -34,32 +41,7 @@
             transform: scale(1.03);
             color: white;
         }
-        .carousel-fade .carousel-item {
-            opacity: 0;
-            transition-duration: 1.2s;
-            transition-property: opacity;
-        }
-        .carousel-fade .carousel-item.active,
-        .carousel-fade .carousel-item-next.carousel-item-start,
-        .carousel-fade .carousel-item-prev.carousel-item-end {
-            opacity: 1;
-        }
-        .carousel-fade .carousel-item-next,
-        .carousel-fade .carousel-item-prev,
-        .carousel-fade .carousel-item.active.carousel-item-start,
-        .carousel-fade .carousel-item.active.carousel-item-end {
-            opacity: 0;
-        }
-        .carousel-indicators button {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 2px solid white;
-        }
-        .carousel-indicators .active {
-            background-color: #4e73df;
-            border-color: #4e73df;
-        }
+        /* ... (biarkan sisa style carousel Anda tetap sama) ... */
         .carousel-caption {
             background: rgba(0,0,0,0.4);
             border-radius: 8px;
@@ -70,7 +52,7 @@
         .carousel-caption p {
             margin: 0;
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 1rem; /* Sedikit dikecilkan untuk mobile */
         }
     </style>
 </head>

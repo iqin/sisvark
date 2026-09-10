@@ -32,7 +32,7 @@
                         <label class="form-label">Peran</label>
                         <select name="peran" class="form-select" required>
                             <option value="siswa">Siswa</option>
-                            <option value="guru">Guru</option>
+                            <!--<option value="guru">Guru</option>-->
                         </select>
                     </div>
                     <div class="mb-3">
