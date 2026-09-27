@@ -23,4 +23,41 @@ class UserModel extends Model
         }
         return $data;
     }
+
+        /**
+     * Ambil semua guru di sekolah yang sama (jika fitur sekolah dipakai nanti).
+     * Untuk sekarang, method ini mengembalikan guru pertama (fallback legacy).
+     * Akan di-refactor ketika fitur kelas sudah diterapkan penuh.
+     */
+    public function getGuruPertama(): ?array
+    {
+        return $this->where('peran', 'guru')->first();
+    }
+
+    /**
+     * Ambil data pengguna + nama sekolah (jika nanti ada tabel sekolah).
+     * Placeholder untuk pengembangan selanjutnya.
+     */
+    public function getWithRelasi(int $userId): ?array
+    {
+        return $this->find($userId);
+    }
+
+    /**
+     * Cek apakah user adalah guru
+     */
+    public function isGuru(int $userId): bool
+    {
+        $user = $this->find($userId);
+        return $user !== null && $user['peran'] === 'guru';
+    }
+
+    /**
+     * Cek apakah user adalah siswa
+     */
+    public function isSiswa(int $userId): bool
+    {
+        $user = $this->find($userId);
+        return $user !== null && $user['peran'] === 'siswa';
+    }
 }

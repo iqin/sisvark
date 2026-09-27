@@ -37,6 +37,9 @@ abstract class BaseController extends Controller
         // $this->helpers = ['form', 'url'];
 
         // Caution: Do not edit this line.
+        // Load helper di sini SEBELUM parent::initController()
+        $this->helpers = ['form', 'url', 'text', 'adaptive', 'auth'];
+
         parent::initController($request, $response, $logger);
 
         // Preload any models, libraries, etc, here.

@@ -15,33 +15,80 @@ class GuruController extends BaseController
             return redirect()->to('/login');
         }
 
+        $userId = session()->get('user_id');
         $db = \Config\Database::connect();
 
-        // Query total siswa
-        $query = $db->query("SELECT COUNT(*) as total FROM pengguna WHERE peran = 'siswa'");
-        $result = $query->getRow();
-        $totalSiswa = $result ? $result->total : 0;
+        if (is_admin()) {
+            // =========================================================
+            // ADMIN: Statistik global (semua data)
+            // =========================================================
+            $totalSiswa      = $db->query("SELECT COUNT(*) AS total FROM pengguna WHERE peran = 'siswa'")->getRow()->total;
+            $totalGuru       = $db->query("SELECT COUNT(*) AS total FROM pengguna WHERE peran = 'guru'")->getRow()->total;
+            $totalKelas      = $db->query("SELECT COUNT(*) AS total FROM kelas WHERE is_active = 1")->getRow()->total;
+            $tuntasVark      = $db->query("SELECT COUNT(DISTINCT pengguna_id) AS total FROM vark_hasil")->getRow()->total;
+            $perluIntervensi = $db->query("SELECT COUNT(DISTINCT pengguna_id) AS total FROM vark_hasil WHERE tipe_hasil = 'M'")->getRow()->total;
+        } else {
+            // =========================================================
+            // GURU BIASA: Statistik dari kelasnya saja
+            // =========================================================
+            $kelasModel = new \App\Models\KelasModel();
+            $kelasIds = array_map('intval', array_column(
+                $kelasModel->where('guru_id', $userId)->findAll(), 'id'
+            ));
 
-        // Query tuntas VARK
-        $query2 = $db->query("SELECT COUNT(DISTINCT pengguna_id) as total FROM vark_hasil");
-        $result2 = $query2->getRow();
-        $tuntasVark = $result2 ? $result2->total : 0;
+            if (!empty($kelasIds)) {
+                $idsString = implode(',', $kelasIds);
 
-        // Query perlu intervensi
-        $query3 = $db->query("SELECT COUNT(DISTINCT pengguna_id) as total FROM vark_hasil WHERE tipe_hasil = 'M'");
-        $result3 = $query3->getRow();
-        $perluIntervensi = $result3 ? $result3->total : 0;
+                $totalSiswa = $db->query("
+                    SELECT COUNT(DISTINCT siswa_id) AS total 
+                    FROM kelas_anggota 
+                    WHERE kelas_id IN ($idsString) AND status = 'aktif'
+                ")->getRow()->total;
 
-        // === QUERY PESAN BARU ===
+                $tuntasVark = $db->query("
+                    SELECT COUNT(DISTINCT v.pengguna_id) AS total 
+                    FROM vark_hasil v
+                    INNER JOIN kelas_anggota ka ON ka.siswa_id = v.pengguna_id
+                    WHERE ka.kelas_id IN ($idsString) AND ka.status = 'aktif'
+                ")->getRow()->total;
+
+                $perluIntervensi = $db->query("
+                    SELECT COUNT(DISTINCT v.pengguna_id) AS total 
+                    FROM vark_hasil v
+                    INNER JOIN kelas_anggota ka ON ka.siswa_id = v.pengguna_id
+                    WHERE ka.kelas_id IN ($idsString) 
+                      AND ka.status = 'aktif'
+                      AND v.tipe_hasil = 'M'
+                ")->getRow()->total;
+            } else {
+                $totalSiswa = $tuntasVark = $perluIntervensi = 0;
+            }
+
+            $totalGuru  = 0;
+            $totalKelas = count($kelasIds);
+        }
+
+        // Pesan baru
         $chatModel = new \App\Models\PesanModel();
-        $pesanBaru = $chatModel->countUnread(session()->get('user_id'));
+        if (is_admin()) {
+            // Admin: semua pesan yang belum dibaca ke guru manapun
+            $pesanBaru = $db->query("
+                SELECT COUNT(*) AS total FROM pesan 
+                WHERE is_read = 0 AND is_from_guru = 0
+            ")->getRow()->total;
+        } else {
+            $pesanBaru = $chatModel->countUnread($userId);
+        }
 
         $data = [
-            'title'          => 'Dashboard Guru',
-            'totalSiswa'     => $totalSiswa,
-            'tuntasVark'     => $tuntasVark,
-            'perluIntervensi'=> $perluIntervensi,
-            'pesanBaru'      => $pesanBaru,
+            'title'           => 'Dashboard Guru',
+            'totalSiswa'      => $totalSiswa,
+            'totalGuru'       => $totalGuru,
+            'totalKelas'      => $totalKelas,
+            'tuntasVark'      => $tuntasVark,
+            'perluIntervensi' => $perluIntervensi,
+            'pesanBaru'       => $pesanBaru,
+            'is_admin'        => is_admin(),
         ];
 
         return view('guru/dashboard', $data);
@@ -63,9 +110,8 @@ class GuruController extends BaseController
     // ======== HALAMAN TAMBAH SOAL VARK ========
     public function varkSoalTambah()
     {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
-            return redirect()->to('/login');
-        }
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
 
         $model = new VarkSoalModel();
         $last = $model->orderBy('nomor', 'DESC')->first();
@@ -81,6 +127,9 @@ class GuruController extends BaseController
     // ======== PROSES SIMPAN SOAL VARK ========
     public function varkSoalSimpan()
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -120,6 +169,9 @@ class GuruController extends BaseController
     // ======== HALAMAN EDIT SOAL VARK ========
     public function varkSoalEdit($id)
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -169,6 +221,9 @@ class GuruController extends BaseController
     // ======== HAPUS SOAL VARK ========
     public function varkSoalHapus($id)
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -189,7 +244,33 @@ class GuruController extends BaseController
         $userModel = new UserModel();
         $varkModel = new VarkResultModel();
 
-        $siswa = $userModel->where('peran', 'siswa')->findAll();
+        if (is_admin()) {
+            // ADMIN: semua siswa
+            $siswa = $userModel->where('peran', 'siswa')->orderBy('nama', 'ASC')->findAll();
+        } else {
+            // GURU: hanya siswa di kelasnya
+            $anggotaModel = new \App\Models\KelasAnggotaModel();
+            $kelasModel = new \App\Models\KelasModel();
+            $kelasIds = array_column(
+                $kelasModel->where('guru_id', session()->get('user_id'))->findAll(), 
+                'id'
+            );
+
+            $siswaIds = [];
+            foreach ($kelasIds as $kid) {
+                $siswaIds = array_merge($siswaIds, $anggotaModel->getSiswaIdsByKelas($kid));
+            }
+            $siswaIds = array_unique($siswaIds);
+
+            if (!empty($siswaIds)) {
+                $siswa = $userModel->where('peran', 'siswa')
+                                   ->whereIn('id', $siswaIds)
+                                   ->orderBy('nama', 'ASC')
+                                   ->findAll();
+            } else {
+                $siswa = [];
+            }
+        }
 
         $dataSiswa = [];
         foreach ($siswa as $s) {
@@ -198,23 +279,24 @@ class GuruController extends BaseController
                             ->first();
 
             $dataSiswa[] = [
-                'id' => $s['id'],
-                'nama' => $s['nama'],
-                'email' => $s['email'],
-                'kelas' => $s['kelas'] ?? '-',
+                'id'         => $s['id'],
+                'nama'       => $s['nama'],
+                'email'      => $s['email'],
+                'kelas'      => $s['kelas'] ?? '-',
                 'vark_hasil' => $vark ? $vark['kategori_hasil'] : 'Belum Tes',
                 'tipe_hasil' => $vark ? $vark['tipe_hasil'] : '-',
-                'skor_v' => $vark ? $vark['skor_v'] : '-',
-                'skor_a' => $vark ? $vark['skor_a'] : '-',
-                'skor_r' => $vark ? $vark['skor_r'] : '-',
-                'skor_k' => $vark ? $vark['skor_k'] : '-',
-                'tanggal' => $vark ? date('d-m-Y H:i', strtotime($vark['created_at'])) : '-'
+                'skor_v'     => $vark ? $vark['skor_v'] : '-',
+                'skor_a'     => $vark ? $vark['skor_a'] : '-',
+                'skor_r'     => $vark ? $vark['skor_r'] : '-',
+                'skor_k'     => $vark ? $vark['skor_k'] : '-',
+                'tanggal'    => $vark ? date('d-m-Y H:i', strtotime($vark['created_at'])) : '-'
             ];
         }
 
         $data = [
-            'title' => 'Hasil VARK Siswa',
-            'siswa' => $dataSiswa
+            'title'    => 'Hasil VARK Siswa',
+            'siswa'    => $dataSiswa,
+            'is_admin' => is_admin(),
         ];
 
         return view('guru/vark_hasil', $data);
@@ -234,6 +316,9 @@ class GuruController extends BaseController
 
     public function materiEdit($id)
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -253,6 +338,9 @@ class GuruController extends BaseController
 
     public function materiUpdate($id)
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -374,6 +462,9 @@ class GuruController extends BaseController
 
     public function zpdSoalTambah()
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -386,6 +477,9 @@ class GuruController extends BaseController
 
     public function zpdSoalSimpan()
     {
+            $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -427,6 +521,9 @@ class GuruController extends BaseController
 
     public function zpdSoalEdit($id)
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -445,6 +542,9 @@ class GuruController extends BaseController
 
     public function zpdSoalUpdate($id)
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
@@ -486,6 +586,9 @@ class GuruController extends BaseController
 
     public function zpdSoalHapus($id)
     {
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
+
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
