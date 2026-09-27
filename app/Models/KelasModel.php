@@ -88,6 +88,38 @@ class KelasModel extends Model
         ", [$guruId])->getResultArray();
     }
 
+        /**
+     * Ambil SEMUA kelas + statistik (untuk admin)
+     */
+    public function getAllWithStats(): array
+    {
+        $db = \Config\Database::connect();
+
+        return $db->query("
+            SELECT 
+                k.*,
+                g.nama AS guru_nama,
+                g.email AS guru_email,
+                (SELECT COUNT(*) 
+                 FROM kelas_anggota ka 
+                 WHERE ka.kelas_id = k.id AND ka.status = 'aktif'
+                ) AS total_siswa,
+                (SELECT COUNT(DISTINCT v.pengguna_id) 
+                 FROM vark_hasil v
+                 INNER JOIN kelas_anggota ka ON ka.siswa_id = v.pengguna_id
+                 WHERE ka.kelas_id = k.id AND ka.status = 'aktif'
+                ) AS total_vark,
+                (SELECT COUNT(DISTINCT z.pengguna_id) 
+                 FROM zpd_hasil z
+                 INNER JOIN kelas_anggota ka ON ka.siswa_id = z.pengguna_id
+                 WHERE ka.kelas_id = k.id AND ka.status = 'aktif'
+                ) AS total_zpd
+            FROM kelas k
+            INNER JOIN pengguna g ON g.id = k.guru_id
+            ORDER BY k.id ASC
+        ")->getResultArray();
+    }
+
     /**
      * Ambil detail kelas + nama guru
      */

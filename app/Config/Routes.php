@@ -91,14 +91,9 @@ $routes->get('chat/history/json/guru', 'ChatController::historyJsonGuru');
 
 // ========== KELAS (GURU) ==========
 $routes->get('guru/kelas',               'KelasController::index');
-$routes->get('guru/kelas/buat',          'KelasController::create');
-$routes->post('guru/kelas/simpan',       'KelasController::store');
 $routes->get('guru/kelas/detail/(:num)', 'KelasController::show/$1');
 $routes->get('guru/kelas/toggle/(:num)', 'KelasController::toggleActive/$1');
 $routes->get('guru/kelas/regenerate/(:num)', 'KelasController::regenerateCode/$1');
 $routes->get('guru/kelas/kick/(:num)/(:num)', 'KelasController::kick/$1/$2');
-
-// ========== KELAS (SISWA) ==========
-$routes->get('siswa/gabung-kelas',          'KelasController::joinForm');
-$routes->post('siswa/gabung-kelas/proses',  'KelasController::joinProcess');
-$routes->get('siswa/kelas/keluar/(:num)',   'KelasController::leave/$1');
+$routes->get('guru/kelas/aktivasi/(:num)/(:num)',   'KelasController::aktivasiSiswa/$1/$2');
+$routes->get('guru/kelas/tolak/(:num)/(:num)',      'KelasController::tolakSiswa/$1/$2');

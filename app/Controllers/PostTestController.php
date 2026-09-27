@@ -361,16 +361,22 @@ class PostTestController extends BaseController
     // ======== NOTIFIKASI KE GURU ========
     private function notifikasiGuru($siswaId, $moduleId, $levelAwal, $levelAkhir, $skor)
     {
-        $db = \Config\Database::connect();
-        
-        // Cari guru (ambil guru pertama)
-        $userModel = new UserModel();
-        $guru = $userModel->where('peran', 'guru')->first();
-        if (!$guru) {
+        // =============================================================
+        // Cari kelas siswa (untuk dapat guru_id + kelas_id)
+        // =============================================================
+        $anggotaModel = new \App\Models\KelasAnggotaModel();
+        $kelasUtama = $anggotaModel->getKelasUtamaSiswa($siswaId);
+
+        if (!$kelasUtama) {
+            // Siswa tidak punya kelas → tidak kirim notifikasi
             return;
         }
 
+        $guruId  = (int) $kelasUtama['guru_id'];
+        $kelasId = (int) $kelasUtama['id'];
+
         // Ambil nama siswa
+        $userModel = new UserModel();
         $siswa = $userModel->find($siswaId);
         $namaSiswa = $siswa['nama'] ?? 'Siswa';
 
@@ -382,9 +388,9 @@ class PostTestController extends BaseController
         $namaModul = $modulNames[$moduleId] ?? 'Modul ' . $moduleId;
 
         $levelLabels = [
-            'novice' => 'Novice (Pemula)',
+            'novice'     => 'Novice (Pemula)',
             'apprentice' => 'Apprentice (Menengah)',
-            'master' => 'Master (Ahli)'
+            'master'     => 'Master (Ahli)'
         ];
 
         $pesan = "⚠️ **Notifikasi Post Test**\n\n" .
@@ -393,18 +399,19 @@ class PostTestController extends BaseController
                  "Skor: {$skor}\n" .
                  "Level Awal: " . ($levelLabels[$levelAwal] ?? $levelAwal) . "\n" .
                  "Level Akhir: " . ($levelLabels[$levelAkhir] ?? $levelAkhir) . "\n" .
-                 "Status: ❌ TIDAK LULUS (Level menurun)\n\n" .
+                 "Status: ❌ TIDAK LULUS\n\n" .
                  "Siswa memerlukan intervensi remedial.";
 
-        // Simpan notifikasi ke tabel pesan (untuk muncul di dashboard guru)
+        // Simpan notifikasi
         $pesanModel = new \App\Models\PesanModel();
         $pesanModel->save([
-            'siswa_id'    => $siswaId,
-            'guru_id'     => $guru['id'],
-            'pesan'       => $pesan,
-            'is_read'     => 0,
-            'is_from_guru'=> 0,
-            'created_at'  => date('Y-m-d H:i:s'),
+            'siswa_id'     => $siswaId,
+            'guru_id'      => $guruId,
+            'kelas_id'     => $kelasId,
+            'pesan'        => $pesan,
+            'is_read'      => 0,
+            'is_from_guru' => 0,
+            'created_at'   => date('Y-m-d H:i:s'),
         ]);
     }
 }

@@ -8,7 +8,7 @@ class UserModel extends Model
 {
     protected $table = 'pengguna';
     protected $primaryKey = 'id';
-    protected $allowedFields = ['nama', 'email', 'kata_sandi', 'peran', 'sekolah', 'kelas'];
+    protected $allowedFields = ['nama', 'email', 'kata_sandi', 'peran', 'is_admin', 'is_active', 'sekolah', 'kelas'];
     protected $useTimestamps = true;
     protected $createdField = 'created_at';
     protected $updatedField = 'updated_at';

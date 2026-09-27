@@ -8,7 +8,8 @@ use App\Models\KelasAnggotaModel;
 class KelasController extends BaseController
 {
     // =============================================================
-    // GURU: Daftar Kelas
+    // Daftar Kelas
+    // Admin: semua kelas | Guru: kelasnya saja
     // =============================================================
     public function index()
     {
@@ -17,76 +18,22 @@ class KelasController extends BaseController
         }
 
         $kelasModel = new KelasModel();
-        $data = [
-            'title' => 'Kelas Saya',
-            'kelas' => $kelasModel->getWithStats(session()->get('user_id')),
-        ];
 
-        return view('guru/kelas_index', $data);
-    }
-
-    // =============================================================
-    // GURU: Form Buat Kelas
-    // =============================================================
-    public function create()
-    {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
-            return redirect()->to('/login');
+        if (is_admin()) {
+            $kelas = $kelasModel->getAllWithStats();
+        } else {
+            $kelas = $kelasModel->getWithStats(session()->get('user_id'));
         }
 
-        return view('guru/kelas_form', [
-            'title' => 'Buat Kelas Baru',
+        return view('guru/kelas_index', [
+            'title' => 'Daftar Kelas',
+            'kelas' => $kelas,
         ]);
     }
 
     // =============================================================
-    // GURU: Simpan Kelas Baru
-    // =============================================================
-    public function store()
-    {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
-            return redirect()->to('/login');
-        }
-
-        $rules = [
-            'nama'           => 'required|min_length[3]|max_length[100]',
-            'mata_pelajaran' => 'required|max_length[50]',
-            'tahun_ajaran'   => 'required|max_length[20]',
-        ];
-
-        if (!$this->validate($rules)) {
-            return redirect()->back()
-                             ->withInput()
-                             ->with('errors', $this->validator->getErrors());
-        }
-
-        $kelasModel = new KelasModel();
-
-        // Tentukan prefix kode berdasarkan mata pelajaran (max 3 huruf)
-        $mapel  = $this->request->getPost('mata_pelajaran');
-        $prefix = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $mapel), 0, 3));
-        if (empty($prefix)) {
-            $prefix = 'KLS';
-        }
-
-        $kode = $kelasModel->generateKode($prefix);
-
-        $kelasModel->save([
-            'guru_id'        => session()->get('user_id'),
-            'nama'           => $this->request->getPost('nama'),
-            'mata_pelajaran' => $mapel,
-            'deskripsi'      => $this->request->getPost('deskripsi'),
-            'tahun_ajaran'   => $this->request->getPost('tahun_ajaran'),
-            'kode_kelas'     => $kode,
-            'is_active'      => 1,
-        ]);
-
-        return redirect()->to('/guru/kelas')->with('success',
-            'Kelas berhasil dibuat! Kode kelas: <strong>' . esc($kode) . '</strong>');
-    }
-
-    // =============================================================
-    // GURU: Detail Kelas (daftar siswa)
+    // Detail Kelas + Daftar Siswa
+    // Admin: semua kelas | Guru: kelasnya saja
     // =============================================================
     public function show($kelasId = null)
     {
@@ -97,33 +44,35 @@ class KelasController extends BaseController
         $kelasModel = new KelasModel();
         $kelas = $kelasModel->find($kelasId);
 
-        if (!$kelas || (int) $kelas['guru_id'] !== (int) session()->get('user_id')) {
+        if (!$kelas) {
             return redirect()->to('/guru/kelas')->with('error', 'Kelas tidak ditemukan.');
         }
 
+        if (!is_admin() && (int) $kelas['guru_id'] !== (int) session()->get('user_id')) {
+            return redirect()->to('/guru/kelas')->with('error', 'Anda tidak berhak mengakses kelas ini.');
+        }
+
         $anggotaModel = new KelasAnggotaModel();
-        $data = [
+
+        return view('guru/kelas_detail', [
             'title' => 'Detail Kelas: ' . $kelas['nama'],
             'kelas' => $kelas,
             'siswa' => $anggotaModel->getSiswaByKelas($kelasId),
-        ];
-
-        return view('guru/kelas_detail', $data);
+        ]);
     }
 
     // =============================================================
-    // GURU: Toggle Aktif / Arsip Kelas
+    // Toggle Aktif / Arsip Kelas — ADMIN ONLY
     // =============================================================
     public function toggleActive($kelasId = null)
     {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
-            return redirect()->to('/login');
-        }
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
 
         $kelasModel = new KelasModel();
         $kelas = $kelasModel->find($kelasId);
 
-        if (!$kelas || (int) $kelas['guru_id'] !== (int) session()->get('user_id')) {
+        if (!$kelas) {
             return redirect()->to('/guru/kelas')->with('error', 'Kelas tidak ditemukan.');
         }
 
@@ -135,18 +84,17 @@ class KelasController extends BaseController
     }
 
     // =============================================================
-    // GURU: Regenerate Kode Kelas (jika kode bocor)
+    // Regenerate Kode Kelas — ADMIN ONLY
     // =============================================================
     public function regenerateCode($kelasId = null)
     {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
-            return redirect()->to('/login');
-        }
+        $guard = require_admin();
+        if ($guard !== true) return $guard;
 
         $kelasModel = new KelasModel();
         $kelas = $kelasModel->find($kelasId);
 
-        if (!$kelas || (int) $kelas['guru_id'] !== (int) session()->get('user_id')) {
+        if (!$kelas) {
             return redirect()->to('/guru/kelas')->with('error', 'Kelas tidak ditemukan.');
         }
 
@@ -163,7 +111,7 @@ class KelasController extends BaseController
     }
 
     // =============================================================
-    // GURU: Keluarkan Siswa dari Kelas
+    // Keluarkan Siswa dari Kelas — Guru kelas atau Admin
     // =============================================================
     public function kick($kelasId = null, $siswaId = null)
     {
@@ -174,105 +122,126 @@ class KelasController extends BaseController
         $kelasModel = new KelasModel();
         $kelas = $kelasModel->find($kelasId);
 
-        if (!$kelas || (int) $kelas['guru_id'] !== (int) session()->get('user_id')) {
+        if (!$kelas) {
             return redirect()->to('/guru/kelas')->with('error', 'Kelas tidak ditemukan.');
+        }
+
+        // Guard: admin boleh semua, guru hanya kelasnya
+        if (!is_admin() && (int) $kelas['guru_id'] !== (int) session()->get('user_id')) {
+            return redirect()->to('/guru/kelas')->with('error', 'Anda tidak berhak mengelola kelas ini.');
         }
 
         $anggotaModel = new KelasAnggotaModel();
         $anggota = $anggotaModel->findAnggota($kelasId, $siswaId);
-        if ($anggota) {
-            $anggotaModel->update($anggota['id'], ['status' => 'keluar']);
+        if (!$anggota) {
+            return redirect()->to('/guru/kelas/detail/' . $kelasId)
+                             ->with('error', 'Siswa tidak tergabung di kelas ini.');
         }
+
+        // Ambil nama siswa untuk pesan
+        $userModel = new \App\Models\UserModel();
+        $siswa = $userModel->find($siswaId);
+        $namaSiswa = $siswa['nama'] ?? 'Siswa';
+
+        // Update status jadi keluar (akun tetap ada, hanya dikeluarkan dari kelas)
+        $anggotaModel->update($anggota['id'], ['status' => 'keluar']);
 
         return redirect()->to('/guru/kelas/detail/' . $kelasId)
-                         ->with('success', 'Siswa berhasil dikeluarkan dari kelas.');
+                         ->with('success', 'Siswa <strong>' . esc($namaSiswa) . '</strong> berhasil dikeluarkan dari kelas.');
     }
 
+        // =============================================================
+    // Aktivasi Siswa — Guru kelas atau Admin
     // =============================================================
-    // SISWA: Form Gabung Kelas + Daftar Kelas yang Diikuti
-    // =============================================================
-    public function joinForm()
+    public function aktivasiSiswa($kelasId = null, $siswaId = null)
     {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
 
-        $anggotaModel = new KelasAnggotaModel();
-        $data = [
-            'title'      => 'Gabung Kelas',
-            'kelas_saya' => $anggotaModel->getKelasBySiswa(session()->get('user_id')),
-        ];
-
-        return view('siswa/gabung_kelas', $data);
-    }
-
-    // =============================================================
-    // SISWA: Proses Gabung Kelas via Kode
-    // =============================================================
-    public function joinProcess()
-    {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
-            return redirect()->to('/login');
-        }
-
-        $kode = strtoupper(trim($this->request->getPost('kode_kelas') ?? ''));
-        if (empty($kode)) {
-            return redirect()->back()->with('error', 'Kode kelas wajib diisi.');
-        }
-
+        // Cek kelas
         $kelasModel = new KelasModel();
-        $kelas = $kelasModel->findByKode($kode);
+        $kelas = $kelasModel->find($kelasId);
+
         if (!$kelas) {
-            return redirect()->back()->with('error', 'Kode kelas tidak valid atau kelas sudah tidak aktif.');
+            return redirect()->to('/guru/kelas')->with('error', 'Kelas tidak ditemukan.');
         }
 
-        $siswaId      = (int) session()->get('user_id');
+        // Guard: admin boleh semua, guru hanya kelasnya
+        if (!is_admin() && (int) $kelas['guru_id'] !== (int) session()->get('user_id')) {
+            return redirect()->to('/guru/kelas')->with('error', 'Anda tidak berhak mengelola kelas ini.');
+        }
+
+        // Cek siswa ada di kelas ini
         $anggotaModel = new KelasAnggotaModel();
-        $existing     = $anggotaModel->findAnggota($kelas['id'], $siswaId);
-
-        if ($existing) {
-            if ($existing['status'] === 'keluar') {
-                // Reaktivasi
-                $anggotaModel->update($existing['id'], [
-                    'status'    => 'aktif',
-                    'joined_at' => date('Y-m-d H:i:s'),
-                ]);
-                return redirect()->to('/siswa/gabung-kelas')
-                                 ->with('success', 'Berhasil bergabung kembali ke kelas <strong>' . esc($kelas['nama']) . '</strong>!');
-            }
-
-            return redirect()->to('/siswa/gabung-kelas')
-                             ->with('info', 'Anda sudah tergabung di kelas ini.');
+        $anggota = $anggotaModel->findAnggota($kelasId, $siswaId);
+        if (!$anggota) {
+            return redirect()->to('/guru/kelas/detail/' . $kelasId)
+                             ->with('error', 'Siswa tidak tergabung di kelas ini.');
         }
 
-        $anggotaModel->save([
-            'kelas_id'  => $kelas['id'],
-            'siswa_id'  => $siswaId,
-            'status'    => 'aktif',
-            'joined_at' => date('Y-m-d H:i:s'),
-        ]);
+        // Aktifkan siswa
+        $userModel = new \App\Models\UserModel();
+        $userModel->update($siswaId, ['is_active' => 1]);
 
-        return redirect()->to('/siswa/gabung-kelas')
-                         ->with('success', 'Berhasil bergabung ke kelas <strong>' . esc($kelas['nama']) . '</strong>!');
+        return redirect()->to('/guru/kelas/detail/' . $kelasId)
+                         ->with('success', 'Akun siswa berhasil diaktifkan. Siswa sekarang bisa login.');
     }
 
     // =============================================================
-    // SISWA: Keluar dari Kelas
+    // Tolak / Hapus Siswa — Guru kelas atau Admin
     // =============================================================
-    public function leave($kelasId = null)
+    public function tolakSiswa($kelasId = null, $siswaId = null)
     {
-        if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
+        if (!session()->get('isLoggedIn') || session()->get('role') !== 'guru') {
             return redirect()->to('/login');
         }
 
-        $anggotaModel = new KelasAnggotaModel();
-        $anggota = $anggotaModel->findAnggota($kelasId, session()->get('user_id'));
+        // Cek kelas
+        $kelasModel = new KelasModel();
+        $kelas = $kelasModel->find($kelasId);
 
-        if ($anggota && $anggota['status'] === 'aktif') {
-            $anggotaModel->update($anggota['id'], ['status' => 'keluar']);
-            return redirect()->to('/siswa/gabung-kelas')->with('success', 'Anda telah keluar dari kelas.');
+        if (!$kelas) {
+            return redirect()->to('/guru/kelas')->with('error', 'Kelas tidak ditemukan.');
         }
 
-        return redirect()->to('/siswa/gabung-kelas')->with('info', 'Anda tidak tergabung di kelas ini.');
+        // Guard: admin boleh semua, guru hanya kelasnya
+        if (!is_admin() && (int) $kelas['guru_id'] !== (int) session()->get('user_id')) {
+            return redirect()->to('/guru/kelas')->with('error', 'Anda tidak berhak mengelola kelas ini.');
+        }
+
+        // Cek siswa ada di kelas ini
+        $anggotaModel = new KelasAnggotaModel();
+        $anggota = $anggotaModel->findAnggota($kelasId, $siswaId);
+        if (!$anggota) {
+            return redirect()->to('/guru/kelas/detail/' . $kelasId)
+                             ->with('error', 'Siswa tidak tergabung di kelas ini.');
+        }
+
+        // Hapus siswa dari database (cascade akan hapus kelas_anggota, VARK, ZPD, dll.)
+        $userModel = new \App\Models\UserModel();
+        $user = $userModel->find($siswaId);
+
+        if (!$user || $user['peran'] !== 'siswa') {
+            return redirect()->to('/guru/kelas/detail/' . $kelasId)
+                             ->with('error', 'Data siswa tidak valid.');
+        }
+
+        $namaSiswa = $user['nama'];
+        $userModel->delete($siswaId);
+
+        return redirect()->to('/guru/kelas/detail/' . $kelasId)
+                         ->with('success', 'Siswa <strong>' . esc($namaSiswa) . '</strong> berhasil ditolak dan dihapus dari sistem.');
     }
+
+    // =============================================================
+    // METHOD LEGACY — Tidak dipakai lagi, hanya placeholder
+    // agar route lama tidak error kalau diakses.
+    // =============================================================
+
+    public function create()       { return redirect()->to('/guru/kelas'); }
+    public function store()        { return redirect()->to('/guru/kelas'); }
+    public function joinForm()     { return redirect()->to('/login'); }
+    public function joinProcess()  { return redirect()->to('/login'); }
+    public function leave()        { return redirect()->to('/login'); }
 }

@@ -22,7 +22,15 @@ class AuthController extends BaseController
         if (session()->get('isLoggedIn')) {
             return redirect()->to('/dashboard');
         }
-        $data['title'] = 'Register - Sistem Adaptif VARK';
+
+        // Ambil daftar kelas yang aktif
+        $kelasModel = new \App\Models\KelasModel();
+        $kelasList = $kelasModel->where('is_active', 1)->orderBy('id', 'ASC')->findAll();
+
+        $data = [
+            'title'      => 'Register - Sistem Adaptif VARK',
+            'kelas_list' => $kelasList,
+        ];
         return view('auth/register', $data);
     }
 
@@ -41,35 +49,51 @@ class AuthController extends BaseController
 
         $user = $model->where('email', $email)->first();
 
-        if ($user && password_verify($password, $user['kata_sandi'])) {
-            $session->set([
-                'user_id'    => $user['id'],
-                'name'       => $user['nama'],
-                'email'      => $user['email'],
-                'role'       => $user['peran'],
-                'is_admin'   => (int) ($user['is_admin'] ?? 0) === 1,
-                'isLoggedIn' => true,
-            ]);
-
-            if ($user['peran'] === 'guru') {
-                return redirect()->to('/guru/dashboard');
-            }
-            return redirect()->to('/siswa/dashboard');
+        if (!$user || !password_verify($password, $user['kata_sandi'])) {
+            return redirect()->to('/login')->with('error', 'Email atau Password salah!');
         }
 
-        return redirect()->to('/login')->with('error', 'Email atau Password salah!');
+        // =============================================================
+        // CEK STATUS AKTIVASI (khusus siswa)
+        // =============================================================
+        if ($user['peran'] === 'siswa' && (int) ($user['is_active'] ?? 0) === 0) {
+            return redirect()->to('/login')->with('error', 
+                'Akun Anda belum diaktifkan oleh guru. Silakan tunggu konfirmasi dari guru kelas Anda.');
+        }
+
+        // Set session
+        $session->set([
+            'user_id'    => $user['id'],
+            'name'       => $user['nama'],
+            'email'      => $user['email'],
+            'role'       => $user['peran'],
+            'is_admin'   => (int) ($user['is_admin'] ?? 0) === 1,
+            'is_active'  => (int) ($user['is_active'] ?? 1) === 1,
+            'isLoggedIn' => true,
+        ]);
+
+        // Redirect sesuai role
+        if ($user['peran'] === 'guru') {
+            return redirect()->to('/guru/dashboard');
+        }
+
+        return redirect()->to('/siswa/dashboard');
     }
 
-    // ======== PROSES REGISTER ========
+    // ======== PROSES REGISTER (SISWA ONLY) ========
     public function doRegister()
     {
-        $model = new UserModel();
+        $userModel    = new UserModel();
+        $kelasModel   = new \App\Models\KelasModel();
+        $anggotaModel = new \App\Models\KelasAnggotaModel();
+        $pesanModel   = new \App\Models\PesanModel();
 
+        // Validasi
         $rules = [
-            'nama'     => 'required|min_length[3]',
-            'email'    => 'required|valid_email|is_unique[pengguna.email]',
+            'nama'       => 'required|min_length[3]|max_length[100]',
+            'email'      => 'required|valid_email|is_unique[pengguna.email]',
             'kata_sandi' => 'required|min_length[6]',
-            'peran'    => 'required|in_list[siswa,guru]',
+            'kelas_id'   => 'required|integer',
         ];
 
         if (!$this->validate($rules)) {
@@ -78,16 +102,65 @@ class AuthController extends BaseController
                              ->with('errors', $this->validator->getErrors());
         }
 
-        $model->save([
-            'nama'       => $this->request->getPost('nama'),
-            'email'      => $this->request->getPost('email'),
+        // Cek kelas_id valid
+        $kelasId = (int) $this->request->getPost('kelas_id');
+        $kelas   = $kelasModel->find($kelasId);
+        if (!$kelas) {
+            return redirect()->to('/register')
+                             ->withInput()
+                             ->with('error', 'Kelas yang dipilih tidak valid.');
+        }
+
+        $namaSiswa  = $this->request->getPost('nama');
+        $emailSiswa = $this->request->getPost('email');
+
+        // Simpan user sebagai siswa dengan is_active = 0 (menunggu verifikasi)
+        $userModel->save([
+            'nama'       => $namaSiswa,
+            'email'      => $emailSiswa,
             'kata_sandi' => $this->request->getPost('kata_sandi'),
-            'peran'      => $this->request->getPost('peran'),
-            'sekolah'    => $this->request->getPost('sekolah'),
-            'kelas'      => $this->request->getPost('kelas'),
+            'peran'      => 'siswa',
+            'is_admin'   => 0,
+            'is_active'  => 0,
+            'sekolah'    => $kelas['nama'],
+            'kelas'      => '-',
         ]);
 
-        return redirect()->to('/login')->with('success', 'Registrasi berhasil! Silakan login.');
+        // Ambil user_id yang baru dibuat
+        $newUserId = $userModel->insertID();
+
+        // Daftarkan siswa ke kelas_anggota
+        $anggotaModel->save([
+            'kelas_id'  => $kelasId,
+            'siswa_id'  => $newUserId,
+            'status'    => 'aktif',
+            'joined_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // =============================================================
+        // KIRIM NOTIFIKASI KE GURU KELAS
+        // =============================================================
+        $notifText = "⚠️ **Pendaftaran Siswa Baru**\n\n" .
+                     "Nama: {$namaSiswa}\n" .
+                     "Email: {$emailSiswa}\n" .
+                     "Kelas: {$kelas['nama']}\n\n" .
+                     "Siswa menunggu verifikasi akun. Silakan buka halaman kelas untuk mengaktifkan akun siswa ini.";
+
+        $pesanModel->save([
+            'siswa_id'     => $newUserId,
+            'guru_id'      => $kelas['guru_id'],
+            'kelas_id'     => $kelasId,
+            'pesan'        => $notifText,
+            'is_read'      => 0,
+            'is_from_guru' => 0,
+            'parent_id'    => null,
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+
+        return redirect()->to('/login')
+                         ->with('success', 
+                            'Registrasi berhasil! Akun Anda <strong>menunggu verifikasi guru</strong> kelas ' . 
+                            esc($kelas['nama']) . '. Silakan hubungi guru kelas Anda untuk aktivasi.');
     }
 
     // ======== LOGOUT ========
@@ -103,25 +176,8 @@ class AuthController extends BaseController
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
             return redirect()->to('/login');
         }
-        
-        $userId = session()->get('user_id');
-        
-        // Ambil data VARK
-        $varkModel = new \App\Models\VarkResultModel();
-        $varkResult = $varkModel->where('pengguna_id', $userId)->first();
-        
-        // Ambil data ZPD (misal untuk modul 1)
-        $zpdModel = new \App\Models\ZpdResultModel();
-        $zpdMod1 = $zpdModel->where(['pengguna_id' => $userId, 'modul_id' => 1])->first();
-        
-        $data = [
-            'title' => 'Dashboard Siswa',
-            'varkResult' => $varkResult,
-            'zpdMod1' => $zpdMod1,
-        ];
-        
-        //return view('siswa/dashboard', $data);
-        // Redirect ke halaman modul
+
+        // Langsung ke halaman modul
         return redirect()->to('/siswa/modul');
     }
 

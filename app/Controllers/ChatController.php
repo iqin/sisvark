@@ -8,12 +8,12 @@ use App\Models\UserModel;
 class ChatController extends BaseController
 {
     // ======== SISWA KIRIM PESAN ========
-    public function send()  
+    public function send()
     {
         // Cek login dan role siswa
         if (!session()->get('isLoggedIn') || session()->get('role') !== 'siswa') {
             return $this->response->setJSON([
-                'status' => 'error', 
+                'status'  => 'error',
                 'message' => 'Anda harus login sebagai siswa!'
             ]);
         }
@@ -21,37 +21,43 @@ class ChatController extends BaseController
         $pesan = $this->request->getPost('pesan');
         if (empty($pesan)) {
             return $this->response->setJSON([
-                'status' => 'error', 
+                'status'  => 'error',
                 'message' => 'Pesan tidak boleh kosong'
             ]);
         }
 
-        // Cari guru (ambil guru pertama)
-        $userModel = new UserModel();
-        $guru = $userModel->where('peran', 'guru')->first();
-        
-        if (!$guru) {
+        // =============================================================
+        // Cari guru berdasarkan kelas siswa (bukan "guru pertama")
+        // =============================================================
+        $anggotaModel = new \App\Models\KelasAnggotaModel();
+        $kelasUtama = $anggotaModel->getKelasUtamaSiswa(session()->get('user_id'));
+
+        if (!$kelasUtama) {
             return $this->response->setJSON([
-                'status' => 'error', 
-                'message' => 'Guru belum terdaftar. Silakan hubungi admin.'
+                'status'  => 'error',
+                'message' => 'Anda belum tergabung di kelas manapun. Hubungi admin.'
             ]);
         }
 
-        // Simpan pesan dengan created_at manual
+        $guruId  = (int) $kelasUtama['guru_id'];
+        $kelasId = (int) $kelasUtama['id'];
+
+        // Simpan pesan
         $model = new PesanModel();
         $model->save([
-            'siswa_id'      => session()->get('user_id'),
-            'guru_id'       => $guru['id'],
-            'pesan'         => $pesan,
-            'is_read'       => 0,
-            'is_from_guru'  => 0,
-            'parent_id'     => null,
-            'created_at'    => date('Y-m-d H:i:s'),
+            'siswa_id'     => session()->get('user_id'),
+            'guru_id'      => $guruId,
+            'kelas_id'     => $kelasId,
+            'pesan'        => $pesan,
+            'is_read'      => 0,
+            'is_from_guru' => 0,
+            'parent_id'    => null,
+            'created_at'   => date('Y-m-d H:i:s'),
         ]);
 
         return $this->response->setJSON([
-            'status' => 'success', 
-            'message' => 'Pesan terkirim!'
+            'status'  => 'success',
+            'message' => 'Pesan terkirim ke guru kelas Anda!'
         ]);
     }
 
@@ -141,33 +147,63 @@ public function historySiswa($siswaId)
         }
 
         $guruId = session()->get('user_id');
-        $db = \Config\Database::connect();
+        $db     = \Config\Database::connect();
 
-        // Query untuk mengambil daftar siswa yang pernah mengirim pesan ke guru ini
-        // Serta menghitung jumlah pesan yang belum dibaca per siswa
-        $query = $db->query("
-            SELECT 
-                siswa.id AS siswa_id,
-                siswa.nama AS siswa_nama,
-                (SELECT pesan FROM pesan WHERE guru_id = ? AND siswa_id = siswa.id ORDER BY created_at DESC LIMIT 1) AS pesan_terakhir,
-                (SELECT created_at FROM pesan WHERE guru_id = ? AND siswa_id = siswa.id ORDER BY created_at DESC LIMIT 1) AS waktu_terakhir,
-                (SELECT COUNT(*) FROM pesan WHERE guru_id = ? AND siswa_id = siswa.id AND is_read = 0 AND is_from_guru = 0) AS belum_dibaca
-            FROM pengguna siswa
-            INNER JOIN pesan ON pesan.siswa_id = siswa.id
-            WHERE pesan.guru_id = ?
-            AND siswa.peran = 'siswa'
-            GROUP BY siswa.id
-            ORDER BY waktu_terakhir DESC
-        ", [$guruId, $guruId, $guruId, $guruId]);
+        if (is_admin()) {
+            // =============================================================
+            // ADMIN: lihat semua pesan dari semua siswa
+            // =============================================================
+            $query = $db->query("
+                SELECT 
+                    siswa.id AS siswa_id,
+                    siswa.nama AS siswa_nama,
+                    (SELECT pesan FROM pesan 
+                     WHERE siswa_id = siswa.id 
+                     ORDER BY created_at DESC LIMIT 1) AS pesan_terakhir,
+                    (SELECT created_at FROM pesan 
+                     WHERE siswa_id = siswa.id 
+                     ORDER BY created_at DESC LIMIT 1) AS waktu_terakhir,
+                    (SELECT COUNT(*) FROM pesan 
+                     WHERE siswa_id = siswa.id 
+                       AND is_read = 0 
+                       AND is_from_guru = 0) AS belum_dibaca
+                FROM pengguna siswa
+                WHERE siswa.peran = 'siswa'
+                  AND EXISTS (SELECT 1 FROM pesan WHERE pesan.siswa_id = siswa.id)
+                ORDER BY waktu_terakhir DESC
+            ");
+        } else {
+            // =============================================================
+            // GURU BIASA: hanya pesan untuk dirinya
+            // =============================================================
+            $query = $db->query("
+                SELECT 
+                    siswa.id AS siswa_id,
+                    siswa.nama AS siswa_nama,
+                    (SELECT pesan FROM pesan 
+                     WHERE guru_id = ? AND siswa_id = siswa.id 
+                     ORDER BY created_at DESC LIMIT 1) AS pesan_terakhir,
+                    (SELECT created_at FROM pesan 
+                     WHERE guru_id = ? AND siswa_id = siswa.id 
+                     ORDER BY created_at DESC LIMIT 1) AS waktu_terakhir,
+                    (SELECT COUNT(*) FROM pesan 
+                     WHERE guru_id = ? AND siswa_id = siswa.id 
+                       AND is_read = 0 AND is_from_guru = 0) AS belum_dibaca
+                FROM pengguna siswa
+                INNER JOIN pesan ON pesan.siswa_id = siswa.id
+                WHERE pesan.guru_id = ?
+                  AND siswa.peran = 'siswa'
+                GROUP BY siswa.id
+                ORDER BY waktu_terakhir DESC
+            ", [$guruId, $guruId, $guruId, $guruId]);
+        }
 
         $dataSiswa = $query->getResultArray();
 
-        // TIDAK MENANDAI SEMUA PESAN SEBAGAI DIBACA DI SINI
-        // Pesan akan ditandai dibaca saat guru membuka modal chat (via historySiswa)
-
         $data = [
-            'title' => 'Pesan dari Siswa',
-            'siswa' => $dataSiswa
+            'title'    => 'Pesan dari Siswa',
+            'siswa'    => $dataSiswa,
+            'is_admin' => is_admin(),
         ];
 
         return view('guru/pesan', $data);

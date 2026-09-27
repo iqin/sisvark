@@ -37,7 +37,7 @@ class KelasAnggotaModel extends Model
     }
 
     /**
-     * Ambil semua siswa di suatu kelas (status aktif) + nama + email
+     * Ambil semua siswa di suatu kelas (status aktif) + nama + email + status aktivasi
      */
     public function getSiswaByKelas(int $kelasId): array
     {
@@ -45,12 +45,14 @@ class KelasAnggotaModel extends Model
                 pengguna.id,
                 pengguna.nama,
                 pengguna.email,
+                pengguna.is_active,
                 pengguna.kelas AS kelas_sekolah,
                 kelas_anggota.joined_at
             ')
             ->join('pengguna', 'pengguna.id = kelas_anggota.siswa_id')
             ->where('kelas_anggota.kelas_id', $kelasId)
             ->where('kelas_anggota.status', 'aktif')
+            ->orderBy('pengguna.is_active', 'ASC') // nonaktif dulu biar kelihatan
             ->orderBy('pengguna.nama', 'ASC')
             ->findAll();
     }

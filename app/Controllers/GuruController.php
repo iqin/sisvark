@@ -241,18 +241,18 @@ class GuruController extends BaseController
             return redirect()->to('/login');
         }
 
-        $userModel = new UserModel();
-        $varkModel = new VarkResultModel();
+        $userModel    = new UserModel();
+        $varkModel    = new VarkResultModel();
+        $anggotaModel = new \App\Models\KelasAnggotaModel();
+        $kelasModel   = new \App\Models\KelasModel();
 
         if (is_admin()) {
             // ADMIN: semua siswa
             $siswa = $userModel->where('peran', 'siswa')->orderBy('nama', 'ASC')->findAll();
         } else {
             // GURU: hanya siswa di kelasnya
-            $anggotaModel = new \App\Models\KelasAnggotaModel();
-            $kelasModel = new \App\Models\KelasModel();
             $kelasIds = array_column(
-                $kelasModel->where('guru_id', session()->get('user_id'))->findAll(), 
+                $kelasModel->where('guru_id', session()->get('user_id'))->findAll(),
                 'id'
             );
 
@@ -275,21 +275,39 @@ class GuruController extends BaseController
         $dataSiswa = [];
         foreach ($siswa as $s) {
             $vark = $varkModel->where('pengguna_id', $s['id'])
-                            ->orderBy('id', 'DESC')
-                            ->first();
+                              ->orderBy('id', 'DESC')
+                              ->first();
+
+            // =============================================================
+            // Tentukan nama sekolah:
+            // 1. Coba ambil dari pengguna.sekolah
+            // 2. Kalau kosong, fallback ke kelas_anggota -> kelas.nama
+            // =============================================================
+            $namaSekolah = trim($s['sekolah'] ?? '');
+            if (empty($namaSekolah) || $namaSekolah === '-') {
+                $anggota = $anggotaModel->where('siswa_id', $s['id'])
+                                        ->where('status', 'aktif')
+                                        ->first();
+                if ($anggota) {
+                    $kelasInfo   = $kelasModel->find($anggota['kelas_id']);
+                    $namaSekolah = $kelasInfo['nama'] ?? '-';
+                } else {
+                    $namaSekolah = '-';
+                }
+            }
 
             $dataSiswa[] = [
                 'id'         => $s['id'],
                 'nama'       => $s['nama'],
                 'email'      => $s['email'],
-                'kelas'      => $s['kelas'] ?? '-',
+                'sekolah'    => $namaSekolah,  // <-- GANTI dari 'kelas'
                 'vark_hasil' => $vark ? $vark['kategori_hasil'] : 'Belum Tes',
                 'tipe_hasil' => $vark ? $vark['tipe_hasil'] : '-',
                 'skor_v'     => $vark ? $vark['skor_v'] : '-',
                 'skor_a'     => $vark ? $vark['skor_a'] : '-',
                 'skor_r'     => $vark ? $vark['skor_r'] : '-',
                 'skor_k'     => $vark ? $vark['skor_k'] : '-',
-                'tanggal'    => $vark ? date('d-m-Y H:i', strtotime($vark['created_at'])) : '-'
+                'tanggal'    => $vark ? date('d-m-Y H:i', strtotime($vark['created_at'])) : '-',
             ];
         }
 

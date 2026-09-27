@@ -6,9 +6,15 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="fw-bold mb-0"><i class="fas fa-flask text-warning me-2"></i>Kelola Soal ZPD</h4>
-                    <a href="<?= base_url('guru/zpd/soal/tambah') ?>" class="btn btn-warning">
-                        <i class="fas fa-plus-circle me-1"></i> Tambah Soal
-                    </a>
+                    <?php if (is_admin()): ?>
+                        <a href="<?= base_url('guru/zpd/soal/tambah') ?>" class="btn btn-warning">
+                            <i class="fas fa-plus-circle me-1"></i> Tambah Soal
+                        </a>
+                    <?php else: ?>
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-eye me-1"></i> Mode Lihat
+                        </span>
+                    <?php endif; ?>
                 </div>
 
                 <?php if (session()->getFlashdata('success')): ?>
@@ -28,12 +34,18 @@
                                 <th>Bobot</th>
                                 <th>Teks Soal</th>
                                 <th>Jawaban</th>
-                                <th>Aksi</th>
+                                <?php if (is_admin()): ?>
+                                    <th>Aksi</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($soal)): ?>
-                                <tr><td colspan="7" class="text-center text-muted">Belum ada soal ZPD.</td></tr>
+                                <tr>
+                                    <td colspan="<?= is_admin() ? 7 : 6 ?>" class="text-center text-muted">
+                                        Belum ada soal ZPD.
+                                    </td>
+                                </tr>
                             <?php else: ?>
                                 <?php $no = 1; foreach ($soal as $s): ?>
                                     <tr>
@@ -52,10 +64,12 @@
                                         <td><?= $s['bobot_nilai'] ?></td>
                                         <td><?= substr($s['teks_soal'], 0, 60) ?>...</td>
                                         <td><strong><?= $s['jawaban_benar'] ?></strong></td>
-                                        <td>
-                                            <a href="<?= base_url('guru/zpd/soal/edit/' . $s['id']) ?>" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
-                                            <a href="<?= base_url('guru/zpd/soal/hapus/' . $s['id']) ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus soal ini?')"><i class="fas fa-trash"></i></a>
-                                        </td>
+                                        <?php if (is_admin()): ?>
+                                            <td>
+                                                <a href="<?= base_url('guru/zpd/soal/edit/' . $s['id']) ?>" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
+                                                <a href="<?= base_url('guru/zpd/soal/hapus/' . $s['id']) ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus soal ini?')"><i class="fas fa-trash"></i></a>
+                                            </td>
+                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>

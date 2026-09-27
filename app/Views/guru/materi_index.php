@@ -6,7 +6,14 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="fw-bold mb-0"><i class="fas fa-cubes text-primary me-2"></i>Kelola Materi Adaptif</h4>
-                    <span class="badge bg-primary">Total: <?= count($konten) ?> konten</span>
+                    <div>
+                        <span class="badge bg-primary me-2">Total: <?= count($konten) ?> konten</span>
+                        <?php if (!is_admin()): ?>
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-eye me-1"></i> Mode Lihat
+                            </span>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
                 <?php if (session()->getFlashdata('success')): ?>
@@ -27,12 +34,18 @@
                                 <th>Judul</th>
                                 <th>Tipe</th>
                                 <th>Media</th>
-                                <th>Aksi</th>
+                                <?php if (is_admin()): ?>
+                                    <th>Aksi</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($konten)): ?>
-                                <tr><td colspan="8" class="text-center text-muted">Belum ada konten adaptif.</td></tr>
+                                <tr>
+                                    <td colspan="<?= is_admin() ? 8 : 7 ?>" class="text-center text-muted">
+                                        Belum ada konten adaptif.
+                                    </td>
+                                </tr>
                             <?php else: ?>
                                 <?php foreach ($konten as $k): ?>
                                     <tr>
@@ -70,7 +83,6 @@
                                         </td>
                                         <td>
                                             <?php
-                                            // Tampilkan ikon untuk setiap media yang tersedia
                                             $mediaIcons = [];
                                             if (!empty($k['gambar_url'])) {
                                                 $mediaIcons[] = '<i class="fas fa-image text-primary" title="Gambar"></i>';
@@ -91,9 +103,13 @@
                                             }
                                             ?>
                                         </td>
-                                        <td>
-                                            <a href="<?= base_url('guru/materi/edit/' . $k['id']) ?>" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
-                                        </td>
+                                        <?php if (is_admin()): ?>
+                                            <td>
+                                                <a href="<?= base_url('guru/materi/edit/' . $k['id']) ?>" class="btn btn-warning btn-sm">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </td>
+                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>

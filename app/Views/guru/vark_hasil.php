@@ -21,7 +21,7 @@
                                     <th>#</th>
                                     <th>Nama</th>
                                     <th>Email</th>
-                                    <th>Kelas</th>
+                                    <th>Sekolah</th>
                                     <th>Hasil VARK</th>
                                     <th>Tipe</th>
                                     <th>Skor V</th>
@@ -37,7 +37,7 @@
                                         <td><?= $no++ ?></td>
                                         <td><?= esc($s['nama']) ?></td>
                                         <td><?= esc($s['email']) ?></td>
-                                        <td><?= esc($s['kelas']) ?></td>
+                                        <td><?= esc($s['sekolah'] ?? '-') ?></td>
                                         <td>
                                             <?php if ($s['vark_hasil'] == 'Belum Tes'): ?>
                                                 <span class="badge bg-secondary">Belum Tes</span>
