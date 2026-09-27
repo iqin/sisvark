@@ -226,7 +226,7 @@
                                 <li>
                                     <span class="dropdown-item-text small">
                                         <strong><?= esc(session()->get('name')) ?></strong><br>
-                                        <span class="text-muted">Login sebagai <?= role_label() ?></span>
+                                        <span class="text-muted"> <?= role_label() ?></span>
                                     </span>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
@@ -249,6 +249,12 @@
                                         </a>
                                     </li>
                                 <?php endif; ?>
+
+                                <li>
+                                    <a class="dropdown-item" href="<?= base_url('ganti-password') ?>">
+                                        <i class="fas fa-key me-2"></i> Ganti Password
+                                    </a>
+                                </li>
 
                                 <li><hr class="dropdown-divider"></li>
                                 <li>

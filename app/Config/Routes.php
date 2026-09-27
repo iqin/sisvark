@@ -15,6 +15,10 @@ $routes->post('register/process', 'AuthController::doRegister');
 $routes->get('logout', 'AuthController::logout');
 $routes->get('dashboard', 'AuthController::dashboard');
 
+// Ganti Password
+$routes->get('ganti-password',         'AuthController::gantiPassword');
+$routes->post('ganti-password/proses', 'AuthController::doGantiPassword');
+
 // ========== DASHBOARD SISWA & GURU ==========
 $routes->get('siswa/dashboard', 'AuthController::studentDashboard');
 //$routes->get('guru/dashboard', 'AuthController::teacherDashboard');

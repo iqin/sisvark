@@ -204,6 +204,79 @@ class AuthController extends BaseController
         return redirect()->to('/siswa/modul');
     }
 
+        // ======== FORM GANTI PASSWORD ========
+    public function gantiPassword()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('/login');
+        }
+
+        return view('auth/ganti_password', [
+            'title' => 'Ganti Password',
+        ]);
+    }
+
+    // ======== PROSES GANTI PASSWORD ========
+    public function doGantiPassword()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('/login');
+        }
+
+        $rules = [
+            'kata_sandi_lama' => 'required',
+            'kata_sandi_baru' => 'required|min_length[6]',
+            'konfirmasi'      => 'required|matches[kata_sandi_baru]',
+        ];
+
+        $messages = [
+            'kata_sandi_lama' => [
+                'required' => 'Password lama wajib diisi.',
+            ],
+            'kata_sandi_baru' => [
+                'required'   => 'Password baru wajib diisi.',
+                'min_length' => 'Password baru minimal 6 karakter.',
+            ],
+            'konfirmasi' => [
+                'required' => 'Konfirmasi password wajib diisi.',
+                'matches'  => 'Konfirmasi password tidak cocok dengan password baru.',
+            ],
+        ];
+
+        if (!$this->validate($rules, $messages)) {
+            return redirect()->back()
+                             ->withInput()
+                             ->with('errors', $this->validator->getErrors());
+        }
+
+        $userId    = session()->get('user_id');
+        $userModel = new UserModel();
+        $user      = $userModel->find($userId);
+
+        if (!$user) {
+            return redirect()->to('/login')->with('error', 'Sesi tidak valid. Silakan login ulang.');
+        }
+
+        // Verifikasi password lama
+        $passwordLama = $this->request->getPost('kata_sandi_lama');
+        if (!password_verify($passwordLama, $user['kata_sandi'])) {
+            return redirect()->back()->with('error', 'Password lama salah.');
+        }
+
+        // Cek password baru tidak sama dengan yang lama
+        $passwordBaru = $this->request->getPost('kata_sandi_baru');
+        if ($passwordLama === $passwordBaru) {
+            return redirect()->back()->with('error', 'Password baru tidak boleh sama dengan password lama.');
+        }
+
+        // Update password
+        // UserModel sudah otomatis hash via beforeUpdate
+        $userModel->update($userId, ['kata_sandi' => $passwordBaru]);
+
+        return redirect()->to('/ganti-password')
+                         ->with('success', 'Password berhasil diubah. Gunakan password baru untuk login berikutnya.');
+    }
+
     // ======== HALAMAN PROFIL SISWA ========
     public function profil()
     {
