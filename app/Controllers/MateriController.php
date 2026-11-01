@@ -82,6 +82,10 @@ class MateriController extends BaseController
             return redirect()->to('/siswa/modul')->with('error', 'Konten materi belum tersedia untuk modul ini.');
         }
 
+        // 5b. Load daftar gambar multi (jika ada)
+        $gambarModel = new \App\Models\MateriAdaptifGambarModel();
+        $gambarList  = $gambarModel->getByMateri((int) $konten['id']);
+
         // 6. Siapkan data scaffolding berdasarkan level ZPD
         $scaffolding = [
             'novice' => [
@@ -110,6 +114,7 @@ class MateriController extends BaseController
             'scaffolding' => $scaffolding[$zpdLevel] ?? $scaffolding['novice'],
             'vark_label' => $this->getVarkLabel($varkType),
             'show_all' => $showAll,
+            'gambar_list' => $gambarList,
         ];
 
         return view('siswa/materi_adaptif', $data);

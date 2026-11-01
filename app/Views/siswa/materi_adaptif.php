@@ -87,14 +87,21 @@
                             }
 
                             switch ($tipe) {
-                                case 'hybrid':
+                            case 'hybrid':
+                            case 'gambar':
+                                if (!empty($gambar_list)) {
+                                    // Mode multi-gambar: tampilkan carousel interaktif
+                                    echo view('siswa/_materi_galeri', [
+                                        'gambar_list' => $gambar_list,
+                                        'teks'        => $teks,
+                                        'judul'       => $konten['judul'],
+                                    ]);
+                                } else {
+                                    // Fallback: single image (perilaku lama)
                                     if (!empty($gambar)) echo '<img src="' . base_url($gambar) . '" class="img-fluid rounded-3 mb-3" alt="' . esc($konten['judul']) . '" style="max-height: 400px; width: auto;">';
                                     if (!empty($teks)) echo '<div class="text-muted">' . nl2br(esc($teks)) . '</div>';
-                                    break;
-                                case 'gambar':
-                                    if (!empty($gambar)) echo '<img src="' . base_url($gambar) . '" class="img-fluid rounded-3 mb-3" alt="' . esc($konten['judul']) . '" style="max-height: 400px; width: auto;">';
-                                    if (!empty($teks)) echo '<div class="text-muted">' . nl2br(esc($teks)) . '</div>';
-                                    break;
+                                }
+                                break;
                                 case 'audio':
                                     if (!empty($audio)) {
                                         if (isAudioEmbed($audio)) {

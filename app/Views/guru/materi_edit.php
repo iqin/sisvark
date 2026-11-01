@@ -20,6 +20,7 @@
 
                 <form action="<?= base_url('guru/materi/update/' . $konten['id']) ?>" method="post" enctype="multipart/form-data">
                     <?= csrf_field() ?>
+                    <input type="hidden" name="form_version" value="v2">
 
                     <!-- =========================================================== -->
                     <!-- FIELD READONLY (Kode Konten, Modul, VARK, ZPD) -->
@@ -102,27 +103,52 @@
                     <!-- FIELD-FIELD KONTEN (dengan display:none default) -->
                     <!-- =========================================================== -->
                     
-                    <!-- GAMBAR: Upload + URL -->
+                    <!-- GAMBAR: Multi-gambar repeater -->
                     <div class="mb-3" id="gambar_group" style="display:none;">
-                        <label class="form-label fw-bold">Upload Gambar</label>
-                        <input type="file" name="gambar_file" class="form-control" accept="image/*">
-                        <small class="text-muted">Upload file gambar (jpg, png, gif, svg). Maks 2MB.</small>
-                        
-                        <?php if (!empty($konten['gambar_url'])): ?>
-                            <div class="mt-2">
-                                <img src="<?= base_url($konten['gambar_url']) ?>" alt="Preview" style="max-height: 150px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
-                                <br>
-                                <span class="text-muted small">Gambar saat ini: <?= esc($konten['gambar_url']) ?></span>
+
+                        <?php if (!empty($gambar_list)): ?>
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-images me-1"></i> Gambar Tersimpan (<?= count($gambar_list) ?>)
+                        </label>
+                        <div class="mb-3">
+                            <?php foreach ($gambar_list as $g): ?>
+                            <div class="card mb-2 border">
+                                <div class="card-body py-2">
+                                    <div class="row g-2 align-items-start">
+                                        <div class="col-md-2">
+                                            <img src="<?= base_url(ltrim($g['gambar_url'], '/')) ?>" class="img-thumbnail" style="width:100%; max-height:90px; object-fit:cover;">
+                                        </div>
+                                        <div class="col-md-10">
+                                            <input type="hidden" name="gambar_id[]" value="<?= $g['id'] ?>">
+                                            <input type="text" name="judul_lama[]" class="form-control form-control-sm mb-1" placeholder="Judul gambar (opsional)" value="<?= esc($g['judul'] ?? '') ?>">
+                                            <textarea name="penjelasan_lama[]" class="form-control form-control-sm mb-1" rows="2" placeholder="Penjelasan gambar (opsional)"><?= esc($g['penjelasan'] ?? '') ?></textarea>
+                                            <div class="form-check">
+                                                <input type="checkbox" name="hapus_gambar[]" value="<?= $g['id'] ?>" class="form-check-input" id="hapus_<?= $g['id'] ?>">
+                                                <label class="form-check-label small text-danger" for="hapus_<?= $g['id'] ?>">Hapus gambar ini</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php elseif (!empty($konten['gambar_url'])): ?>
+                        <div class="alert alert-info py-2 mb-3">
+                            <i class="fas fa-info-circle me-1"></i> <strong>Materi ini masih menggunakan gambar tunggal lama.</strong>
+                            <img src="<?= base_url(ltrim($konten['gambar_url'], '/')) ?>" class="d-block mt-2 rounded border" style="max-height:100px;">
+                            <small class="text-muted d-block mt-1">Tambahkan gambar baru di bawah untuk mengaktifkan galeri. Gambar lama akan otomatis disimpan sebagai gambar pertama jika Anda tidak menambahkan gambar baru.</small>
+                        </div>
                         <?php endif; ?>
 
-                        <div class="mt-2">
-                            <label class="form-label fw-bold">URL Gambar (alternatif)</label>
-                            <input type="text" name="gambar_url" class="form-control" 
-                                   value="<?= old('gambar_url', $konten['gambar_url'] ?? '') ?>" 
-                                   placeholder="https://example.com/gambar.png atau /assets/images/...">
-                            <small class="text-muted">Jika upload file, URL ini akan diabaikan.</small>
-                        </div>
+                        <hr class="my-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-plus-circle me-1"></i> Tambah Gambar Baru
+                        </label>
+                        <small class="text-muted d-block mb-2">Format: jpg, png, gif, webp, svg. Maks 2MB per file. Total maksimal 10 gambar.</small>
+                        <div id="newImagesContainer"></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addNewImageRow()">
+                            <i class="fas fa-plus me-1"></i> Tambah Baris Gambar
+                        </button>
                     </div>
 
                     <!-- TEKS KONTEN (selalu tampil) -->
@@ -255,10 +281,51 @@
                 default:
                     break;
             }
+            
         }
 
         toggleFields();
         document.getElementById('tipe_tampilan').addEventListener('change', toggleFields);
+
+                // ============ MULTI-IMAGE REPEATER ============
+        window.addNewImageRow = function() {
+            const container = document.getElementById('newImagesContainer');
+            const currentCount = container.querySelectorAll('.new-img-item').length;
+            if (currentCount >= 10) {
+                alert('Maksimal 10 gambar baru per materi.');
+                return;
+            }
+            const html = `
+            <div class="card mb-2 new-img-item border-primary">
+                <div class="card-body py-2">
+                    <div class="row g-2 align-items-start">
+                        <div class="col-md-3">
+                            <input type="file" name="gambar_baru[]" class="form-control form-control-sm" accept="image/*" onchange="previewImg(this)">
+                            <img class="img-thumbnail mt-1 preview-img" style="display:none; width:100%; max-height:80px; object-fit:cover;">
+                        </div>
+                        <div class="col-md-8">
+                            <input type="text" name="judul_baru[]" class="form-control form-control-sm mb-1" placeholder="Judul gambar (opsional)">
+                            <textarea name="penjelasan_baru[]" class="form-control form-control-sm" rows="2" placeholder="Penjelasan (opsional)"></textarea>
+                        </div>
+                        <div class="col-md-1 text-end">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.new-img-item').remove()" title="Batal">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        };
+
+        window.previewImg = function(input) {
+            const file = input.files[0];
+            const preview = input.parentElement.querySelector('.preview-img');
+            if (file && preview) {
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+            }
+        };
     });
 </script>
 <?= $this->endSection() ?>

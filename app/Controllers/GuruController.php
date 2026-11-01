@@ -350,6 +350,10 @@ class GuruController extends BaseController
         $modulModel = new \App\Models\ModulModel();
         $data['modul'] = $modulModel->findAll();
 
+        // Load daftar gambar existing (multi-gambar)
+        $gambarModel = new \App\Models\MateriAdaptifGambarModel();
+        $data['gambar_list'] = $gambarModel->getByMateri((int) $id);
+
         $data['title'] = 'Edit Materi Adaptif';
         return view('guru/materi_edit', $data);
     }
@@ -369,24 +373,29 @@ class GuruController extends BaseController
             return redirect()->to('/guru/materi')->with('error', 'Konten tidak ditemukan!');
         }
 
-        // Validasi field
+        // Deteksi form: lama (single) atau baru (multi-gambar)
+        $isNewForm    = $this->request->getPost('form_version') === 'v2';
+        $tipeTampilan = $this->request->getPost('tipe_tampilan');
+        $isGambarMode = in_array($tipeTampilan, ['gambar', 'hybrid']);
+
+        // Validasi dasar
         $rules = [
             'judul'          => 'required|max_length[255]',
             'tipe_tampilan'  => 'required|in_list[teks,gambar,audio,video,interaktif,hybrid]',
-            'gambar_url'     => 'permit_empty|max_length[255]',
             'teks_konten'    => 'permit_empty',
             'audio_url'      => 'permit_empty|max_length[255]',
             'video_url'      => 'permit_empty|max_length[255]',
             'interaktif_url' => 'permit_empty|max_length[255]',
         ];
 
-        // Validasi file gambar (opsional)
-        $gambarFile = $this->request->getFile('gambar_file');
-        if ($gambarFile && $gambarFile->isValid() && !$gambarFile->hasMoved()) {
-            $rules['gambar_file'] = 'max_size[gambar_file,2048]|is_image[gambar_file]';
+        if (!$isNewForm) {
+            $rules['gambar_url'] = 'permit_empty|max_length[255]';
+            $gambarFile = $this->request->getFile('gambar_file');
+            if ($gambarFile && $gambarFile->isValid() && !$gambarFile->hasMoved()) {
+                $rules['gambar_file'] = 'max_size[gambar_file,2048]|is_image[gambar_file]';
+            }
         }
 
-        // Validasi file audio (opsional)
         $audioFile = $this->request->getFile('audio_file');
         if ($audioFile && $audioFile->isValid() && !$audioFile->hasMoved()) {
             $rules['audio_file'] = 'max_size[audio_file,5120]|ext_in[audio_file,mp3,wav,ogg]';
@@ -398,39 +407,22 @@ class GuruController extends BaseController
                             ->with('errors', $this->validator->getErrors());
         }
 
-        // === PROSES UPLOAD GAMBAR ===
-        $gambarPath = $this->request->getPost('gambar_url');
-        if ($gambarFile && $gambarFile->isValid() && !$gambarFile->hasMoved()) {
-            $modulId = $existing['modul_id'];
-            $uploadPath = FCPATH . 'assets/images/modul' . $modulId . '/';
-            
-            // Buat folder jika belum ada
-            if (!is_dir($uploadPath)) {
-                mkdir($uploadPath, 0777, true);
-            }
-
-            // Generate nama file unik
-            $newName = $gambarFile->getRandomName();
-            if ($gambarFile->move($uploadPath, $newName)) {
-                $gambarPath = 'assets/images/modul' . $modulId . '/' . $newName;
-            } else {
-                return redirect()->to('/guru/materi/edit/' . $id)
-                                ->with('upload_error', 'Gagal upload gambar!');
-            }
-        }
-
-        // === PROSES UPLOAD AUDIO ===
-        $audioPath = $this->request->getPost('audio_url');
+        // Upload audio
+        $audioPath = $this->request->getPost('audio_url') ?? ($existing['audio_url'] ?? '');
         if ($audioFile && $audioFile->isValid() && !$audioFile->hasMoved()) {
-            $modulId = $existing['modul_id'];
+            $modulId    = $existing['modul_id'];
             $uploadPath = FCPATH . 'assets/audio/modul' . $modulId . '/';
-            
+
             if (!is_dir($uploadPath)) {
                 mkdir($uploadPath, 0777, true);
             }
 
             $newName = $audioFile->getRandomName();
             if ($audioFile->move($uploadPath, $newName)) {
+                if (!empty($existing['audio_url'])) {
+                    $oldPath = FCPATH . ltrim($existing['audio_url'], '/');
+                    if (is_file($oldPath)) @unlink($oldPath);
+                }
                 $audioPath = 'assets/audio/modul' . $modulId . '/' . $newName;
             } else {
                 return redirect()->to('/guru/materi/edit/' . $id)
@@ -438,23 +430,175 @@ class GuruController extends BaseController
             }
         }
 
-        // === Siapkan data update ===
-        $updateData = [
-            'judul'          => $this->request->getPost('judul'),
-            'tipe_tampilan'  => $this->request->getPost('tipe_tampilan'),
-            'gambar_url'     => $gambarPath,
-            'teks_konten'    => $this->request->getPost('teks_konten'),
-            'audio_url'      => $audioPath,
-            'video_url'      => $this->request->getPost('video_url'),
-            'interaktif_url' => $this->request->getPost('interaktif_url'),
-        ];
+        // Proses gambar
+        $gambarModel    = new \App\Models\MateriAdaptifGambarModel();
+        $gambarUrlInduk = $existing['gambar_url'] ?? null;
 
-        // Hapus field kosong agar tidak menimpa data lama jika kosong
-        foreach ($updateData as $key => $value) {
-            if ($value === '' && !in_array($key, ['judul', 'tipe_tampilan'])) {
-                unset($updateData[$key]);
+        if ($isNewForm && $isGambarMode) {
+            // ===== FORM BARU + MODE GAMBAR: multi-gambar =====
+            $existingGambar = $gambarModel->getByMateri((int) $id);
+            $existingById   = [];
+            foreach ($existingGambar as $g) {
+                $existingById[(int) $g['id']] = $g;
+            }
+
+            $existingIds    = $this->request->getPost('gambar_id')       ?? [];
+            $judulLama      = $this->request->getPost('judul_lama')      ?? [];
+            $penjelasanLama = $this->request->getPost('penjelasan_lama') ?? [];
+            $hapusIds       = $this->request->getPost('hapus_gambar')    ?? [];
+            $judulBaru      = $this->request->getPost('judul_baru')      ?? [];
+            $penjelasanBaru = $this->request->getPost('penjelasan_baru') ?? [];
+            $fileBaruArr    = $this->request->getFileMultiple('gambar_baru') ?? [];
+
+            $rows           = [];
+            $finalKeptPaths = [];
+
+            // STEP 1: gambar existing yang dipertahankan
+            foreach ($existingIds as $i => $gid) {
+                $gid = (int) $gid;
+                if ($gid <= 0) continue;
+                if (in_array($gid, $hapusIds)) continue;
+                if (!isset($existingById[$gid])) continue;
+
+                $rows[] = [
+                    'gambar_url' => $existingById[$gid]['gambar_url'],
+                    'judul'      => trim($judulLama[$i] ?? '') ?: null,
+                    'penjelasan' => trim($penjelasanLama[$i] ?? '') ?: null,
+                    'urutan'     => count($rows),
+                ];
+                $finalKeptPaths[] = $existingById[$gid]['gambar_url'];
+            }
+
+            // STEP 2: file baru
+            $uploadPath = FCPATH . 'assets/images/modul' . $existing['modul_id'] . '/';
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0777, true);
+            }
+
+            foreach ($fileBaruArr as $i => $file) {
+                if (!$file || !$file->isValid() || $file->hasMoved()) continue;
+
+                if ($file->getSize() > 2 * 1024 * 1024) {
+                    return redirect()->to('/guru/materi/edit/' . $id)
+                                    ->withInput()
+                                    ->with('upload_error',
+                                        'Ukuran file melebihi 2MB: ' . $file->getClientName());
+                }
+                $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+                if (!in_array($file->getMimeType(), $allowedMimes)) {
+                    return redirect()->to('/guru/materi/edit/' . $id)
+                                    ->withInput()
+                                    ->with('upload_error',
+                                        'Format tidak didukung: ' . $file->getClientName());
+                }
+
+                $newName = $file->getRandomName();
+                if ($file->move($uploadPath, $newName)) {
+                    $rows[] = [
+                        'gambar_url' => 'assets/images/modul' . $existing['modul_id'] . '/' . $newName,
+                        'judul'      => trim($judulBaru[$i] ?? '') ?: null,
+                        'penjelasan' => trim($penjelasanBaru[$i] ?? '') ?: null,
+                        'urutan'     => count($rows),
+                    ];
+                } else {
+                    return redirect()->to('/guru/materi/edit/' . $id)
+                                    ->withInput()
+                                    ->with('upload_error',
+                                        'Gagal upload file: ' . $file->getClientName());
+                }
+            }
+
+            // Auto-migrate gambar tunggal lama → jadi gambar pertama galeri
+            if (empty($rows) && !empty($existing['gambar_url'])) {
+                $rows[] = [
+                    'gambar_url' => $existing['gambar_url'],
+                    'judul'      => null,
+                    'penjelasan' => null,
+                    'urutan'     => 0,
+                ];
+            }
+
+            // STEP 3: validasi hasil
+            if (empty($rows)) {
+                return redirect()->to('/guru/materi/edit/' . $id)
+                                ->withInput()
+                                ->with('upload_error',
+                                    'Minimal satu gambar harus ada untuk tipe tampilan ini.');
+            }
+            if (count($rows) > 10) {
+                return redirect()->to('/guru/materi/edit/' . $id)
+                                ->withInput()
+                                ->with('upload_error', 'Maksimal 10 gambar per materi.');
+            }
+
+            // STEP 4: hapus file fisik yang dibuang
+            foreach ($existingGambar as $oldG) {
+                if (!in_array($oldG['gambar_url'], $finalKeptPaths)) {
+                    $oldPath = FCPATH . ltrim($oldG['gambar_url'], '/');
+                    if (is_file($oldPath)) @unlink($oldPath);
+                }
+            }
+
+            // STEP 5: simpan ke tabel child
+            if (!$gambarModel->replaceAll((int) $id, $rows)) {
+                return redirect()->to('/guru/materi/edit/' . $id)
+                                ->withInput()
+                                ->with('upload_error', 'Gagal menyimpan daftar gambar.');
+            }
+
+            $gambarUrlInduk = null;
+
+        } elseif ($isNewForm) {
+            // Form baru tapi tipe bukan gambar/hybrid: jangan sentuh gambar_url & children
+            $gambarUrlInduk = $existing['gambar_url'] ?? null;
+
+        } else {
+            // ===== FORM LAMA: single image (backward compat) =====
+            $gambarUrlInduk = $this->request->getPost('gambar_url')
+                              ?? ($existing['gambar_url'] ?? null);
+
+            $gambarFile = $this->request->getFile('gambar_file');
+            if ($gambarFile && $gambarFile->isValid() && !$gambarFile->hasMoved()) {
+                $modulId    = $existing['modul_id'];
+                $uploadPath = FCPATH . 'assets/images/modul' . $modulId . '/';
+
+                if (!is_dir($uploadPath)) {
+                    mkdir($uploadPath, 0777, true);
+                }
+
+                $newName = $gambarFile->getRandomName();
+                if ($gambarFile->move($uploadPath, $newName)) {
+                    if (!empty($existing['gambar_url'])) {
+                        $oldPath = FCPATH . ltrim($existing['gambar_url'], '/');
+                        if (is_file($oldPath)) @unlink($oldPath);
+                    }
+                    $gambarUrlInduk = 'assets/images/modul' . $modulId . '/' . $newName;
+                } else {
+                    return redirect()->to('/guru/materi/edit/' . $id)
+                                    ->with('upload_error', 'Gagal upload gambar!');
+                }
+            }
+
+            $existingChild = $gambarModel->getByMateri((int) $id);
+            if (!empty($existingChild)) {
+                foreach ($existingChild as $g) {
+                    $oldPath = FCPATH . ltrim($g['gambar_url'], '/');
+                    if (is_file($oldPath)) @unlink($oldPath);
+                }
+                $gambarModel->deleteByMateri((int) $id);
             }
         }
+
+        // Update induk
+        $updateData = [
+            'judul'          => $this->request->getPost('judul'),
+            'tipe_tampilan'  => $tipeTampilan,
+            'teks_konten'    => $this->request->getPost('teks_konten'),
+            'gambar_url'     => $gambarUrlInduk,
+            'audio_url'      => $audioPath,
+            'video_url'      => $this->request->getPost('video_url')      ?: ($existing['video_url']      ?? null),
+            'interaktif_url' => $this->request->getPost('interaktif_url') ?: ($existing['interaktif_url'] ?? null),
+        ];
 
         $model->update($id, $updateData);
 
